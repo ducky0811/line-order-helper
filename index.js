@@ -36,7 +36,11 @@ try {
   if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
     authConfig = {
       clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
-      privateKey: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n') // 自動處理換行
+      privateKey: process.env.GOOGLE_PRIVATE_KEY
+  .trim()
+  .replace(/^["']|["']$/g, '')
+  .replace(/\\{1,2}n/g, '\n')
+  .replace(/\r\n/g, '\n')
     };
   } 
 
