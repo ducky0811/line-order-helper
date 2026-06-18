@@ -1,0 +1,20 @@
+[
+  {
+    "name": "雞排",
+    "price": 80,
+    "description": "現點現炸、外酥內多汁的脆皮大雞排！",
+    "image": "https://images.unsplash.com/photo-1562967914-608f82629710?w=600"
+  },
+  {
+    "name": "紅茶",
+    "price": 30,
+    "description": "古早味決明子紅茶，黃金比例微糖微冰。",
+    "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=600"
+  },
+  {
+    "name": "蛋餅",
+    "price": 35,
+    "description": "手工酥皮蛋餅，外皮焦香、蛋香四溢。",
+    "image": "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600"
+  }
+]
