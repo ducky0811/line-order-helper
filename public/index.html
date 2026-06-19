@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#2457d6">
+  <title>接單小幫手</title>
+  <link rel="stylesheet" href="/admin/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section id="loginView" class="login-card">
+      <div class="brand-mark">單</div>
+      <h1>接單小幫手</h1>
+      <p>登入後即可用手機管理商品與訂單。</p>
+      <form id="loginForm">
+        <label>管理密碼<input id="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">登入管理後台</button>
+      </form>
+      <p id="loginError" class="error"></p>
+    </section>
+
+    <section id="appView" hidden>
+      <header>
+        <div><span class="eyebrow">商家管理後台</span><h1>今天也順利接單</h1></div>
+        <button id="logoutButton" class="ghost">登出</button>
+      </header>
+      <nav>
+        <button class="tab active" data-tab="products">商品管理</button>
+        <button class="tab" data-tab="orders">訂單處理</button>
+      </nav>
+
+      <section id="productsPanel" class="panel">
+        <div class="panel-title"><div><h2>商品</h2><p>修改後，LINE 菜單會立即使用最新內容。</p></div><button id="addProduct">＋ 新增商品</button></div>
+        <div id="productList" class="product-grid"></div>
+      </section>
+
+      <section id="ordersPanel" class="panel" hidden>
+        <div class="panel-title"><div><h2>訂單</h2><p>更新狀態時會自動通知 LINE 客戶。</p></div><button id="refreshOrders" class="ghost">重新整理</button></div>
+        <div id="orderList" class="order-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="productDialog">
+    <form id="productForm" method="dialog">
+      <div class="dialog-head"><h2 id="dialogTitle">新增商品</h2><button type="button" id="closeDialog" class="icon">×</button></div>
+      <input id="productId" type="hidden">
+      <label>商品名稱<input id="name" maxlength="60" required></label>
+      <div class="two-col"><label>價格<input id="price" type="number" min="0" step="1" required></label><label>庫存（可留白）<input id="stock" type="number" min="0"></label></div>
+      <label>商品介紹<textarea id="description" rows="3" maxlength="180"></textarea></label>
+      <label>圖片網址<input id="imageUrl" type="url" placeholder="https://..."></label>
+      <label class="switch"><input id="active" type="checkbox" checked><span>在 LINE 菜單中販售</span></label>
+      <p id="formError" class="error"></p>
+      <div class="dialog-actions"><button type="button" id="deleteProduct" class="danger" hidden>刪除</button><button type="submit">儲存商品</button></div>
+    </form>
+  </dialog>
+  <div id="toast" role="status"></div>
+  <script src="/admin/app.js" defer></script>
+</body>
+</html>

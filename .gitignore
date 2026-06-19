@@ -4,3 +4,4 @@ google-key.json
 .env
 
 node_modules/
+data/
