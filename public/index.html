@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
+  <link rel="stylesheet" href="/admin/upload.css">
 </head>
 <body>
   <main class="shell">
@@ -49,7 +50,9 @@
       <label>商品名稱<input id="name" maxlength="60" required></label>
       <div class="two-col"><label>價格<input id="price" type="number" min="0" step="1" required></label><label>庫存（可留白）<input id="stock" type="number" min="0"></label></div>
       <label>商品介紹<textarea id="description" rows="3" maxlength="180"></textarea></label>
-      <label>圖片網址<input id="imageUrl" type="url" placeholder="https://..."></label>
+      <label>商品照片<input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"><span class="field-help">可直接使用手機相簿，系統會自動縮小照片。</span></label>
+      <img id="imagePreview" class="image-preview" alt="商品照片預覽" hidden>
+      <details><summary>或使用圖片網址</summary><label>圖片網址<input id="imageUrl" type="url" placeholder="https://..."></label></details>
       <label class="switch"><input id="active" type="checkbox" checked><span>在 LINE 菜單中販售</span></label>
       <p id="formError" class="error"></p>
       <div class="dialog-actions"><button type="button" id="deleteProduct" class="danger" hidden>刪除</button><button type="submit">儲存商品</button></div>

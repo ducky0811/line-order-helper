@@ -6,6 +6,7 @@ const { createAuth } = require('./auth');
 const { createSheetsService } = require('./sheets');
 const { createBot } = require('./bot');
 const { buildOrder } = require('./orders');
+const { createImageService } = require('./images');
 
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
@@ -16,6 +17,7 @@ async function createApp(options = {}) {
   const sheets = options.sheets || createSheetsService();
   const bot = options.bot || createBot({ store, sheets });
   const auth = options.auth || createAuth();
+  const images = options.images || createImageService();
 
   app.post('/webhook', bot.middleware, async (req, res) => {
     try {
@@ -27,7 +29,7 @@ async function createApp(options = {}) {
     }
   });
 
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: '4mb' }));
   app.use('/admin', express.static(path.join(rootDir, 'public')));
   app.use('/shop', express.static(path.join(rootDir, 'shop')));
   app.get('/', (_req, res) => res.redirect('/admin'));
@@ -52,6 +54,9 @@ async function createApp(options = {}) {
   admin.use(auth.requireAdmin);
   admin.get('/products', async (_req, res, next) => {
     try { res.json(await store.listProducts()); } catch (error) { next(error); }
+  });
+  admin.post('/images', async (req, res, next) => {
+    try { res.status(201).json({ url: await images.upload(req.body?.data_url) }); } catch (error) { next(error); }
   });
   admin.post('/products', async (req, res, next) => {
     try { res.status(201).json(await store.createProduct(req.body)); } catch (error) { next(error); }

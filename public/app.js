@@ -46,12 +46,27 @@ function renderProducts() {
 
 function openProduct(product=null) {
   $('#productForm').reset(); $('#formError').textContent=''; $('#productId').value=product?.id||''; $('#dialogTitle').textContent=product?'編輯商品':'新增商品';
-  $('#name').value=product?.name||''; $('#price').value=product?.price??''; $('#stock').value=product?.stock??''; $('#description').value=product?.description||''; $('#imageUrl').value=product?.image_url||''; $('#active').checked=product?.active!==false; $('#deleteProduct').hidden=!product; $('#productDialog').showModal();
+  $('#name').value=product?.name||''; $('#price').value=product?.price??''; $('#stock').value=product?.stock??''; $('#description').value=product?.description||''; $('#imageUrl').value=product?.image_url||''; $('#active').checked=product?.active!==false; $('#deleteProduct').hidden=!product;
+  $('#imagePreview').src=product?.image_url||''; $('#imagePreview').hidden=!product?.image_url; $('#productDialog').showModal();
 }
 $('#addProduct').addEventListener('click',()=>openProduct()); $('#closeDialog').addEventListener('click',()=>$('#productDialog').close());
+$('#imageFile').addEventListener('change',event=>{const file=event.target.files[0];if(!file)return;$('#imagePreview').src=URL.createObjectURL(file);$('#imagePreview').hidden=false;});
+
+async function resizeImage(file) {
+  const bitmap=await createImageBitmap(file); const scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement('canvas'); canvas.width=Math.round(bitmap.width*scale); canvas.height=Math.round(bitmap.height*scale);
+  canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height); bitmap.close();
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('照片處理失敗')),'image/webp',0.82));
+  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('照片讀取失敗'));reader.readAsDataURL(blob);});
+}
 $('#productForm').addEventListener('submit',async event=>{
-  event.preventDefault(); const id=$('#productId').value; const body={name:$('#name').value,price:Number($('#price').value),stock:$('#stock').value,description:$('#description').value,image_url:$('#imageUrl').value,active:$('#active').checked};
-  try { await api(id?`/api/admin/products/${id}`:'/api/admin/products',{method:id?'PUT':'POST',body:JSON.stringify(body)}); $('#productDialog').close(); await loadProducts(); toast('商品已儲存'); } catch(error) { $('#formError').textContent=error.message; }
+  event.preventDefault(); const id=$('#productId').value; const saveButton=event.submitter; saveButton.disabled=true; $('#formError').textContent='';
+  try {
+    let imageUrl=$('#imageUrl').value; const file=$('#imageFile').files[0];
+    if(file){saveButton.textContent='照片上傳中…';const uploaded=await api('/api/admin/images',{method:'POST',body:JSON.stringify({data_url:await resizeImage(file)})});imageUrl=uploaded.url;}
+    const body={name:$('#name').value,price:Number($('#price').value),stock:$('#stock').value,description:$('#description').value,image_url:imageUrl,active:$('#active').checked};
+    saveButton.textContent='儲存中…'; await api(id?`/api/admin/products/${id}`:'/api/admin/products',{method:id?'PUT':'POST',body:JSON.stringify(body)}); $('#productDialog').close(); await loadProducts(); toast('商品已儲存');
+  } catch(error) { $('#formError').textContent=error.message; } finally { saveButton.disabled=false; saveButton.textContent='儲存商品'; }
 });
 $('#deleteProduct').addEventListener('click',async()=>{ const id=$('#productId').value; if(!id||!confirm('確定要永久刪除這項商品嗎？'))return; try{await api(`/api/admin/products/${id}`,{method:'DELETE'});$('#productDialog').close();await loadProducts();toast('商品已刪除');}catch(error){$('#formError').textContent=error.message;} });
 

@@ -41,3 +41,10 @@ alter table public.orders add column if not exists phone text not null default '
 alter table public.orders add column if not exists fulfillment text not null default 'pickup';
 alter table public.orders add column if not exists pickup_time text not null default '';
 alter table public.orders add column if not exists note text not null default '';
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('product-images', 'product-images', true, 2097152, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set
+  public = true,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
