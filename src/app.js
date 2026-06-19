@@ -37,8 +37,17 @@ async function createApp(options = {}) {
   app.get('/api/shop/products', async (_req, res, next) => {
     try { res.json(await store.listProducts({ activeOnly: true })); } catch (error) { next(error); }
   });
+  app.get('/api/shop/config', async (_req, res, next) => {
+    try { res.json(await store.getSettings()); } catch (error) { next(error); }
+  });
   app.post('/api/shop/orders', async (req, res, next) => {
     try {
+      const settings = await store.getSettings();
+      if (!settings.accepting_orders) {
+        const error = new Error('店家目前暫停接單，請稍後再試');
+        error.status = 409;
+        throw error;
+      }
       // LINE user ID 之後只接受經 LIFF 驗證的身分，不信任公開網頁自行提交的值。
       const input = await buildOrder(store, { ...req.body, line_user_id: null });
       const order = await store.createOrder(input);
@@ -54,6 +63,12 @@ async function createApp(options = {}) {
   admin.use(auth.requireAdmin);
   admin.get('/products', async (_req, res, next) => {
     try { res.json(await store.listProducts()); } catch (error) { next(error); }
+  });
+  admin.get('/settings', async (_req, res, next) => {
+    try { res.json(await store.getSettings()); } catch (error) { next(error); }
+  });
+  admin.put('/settings', async (req, res, next) => {
+    try { res.json(await store.updateSettings(req.body)); } catch (error) { next(error); }
   });
   admin.post('/images', async (req, res, next) => {
     try { res.status(201).json({ url: await images.upload(req.body?.data_url) }); } catch (error) { next(error); }
@@ -80,8 +95,9 @@ async function createApp(options = {}) {
   app.use('/api/admin', admin);
 
   app.use((error, _req, res, _next) => {
-    console.error(error);
-    res.status(400).json({ error: error.message || '操作失敗' });
+    const status = error.status || 400;
+    if (status >= 500) console.error(error);
+    res.status(status).json({ error: error.message || '操作失敗' });
   });
   return { app, store, bot };
 }

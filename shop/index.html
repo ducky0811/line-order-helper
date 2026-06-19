@@ -6,14 +6,17 @@
   <meta name="theme-color" content="#ff6b35">
   <title>線上點餐</title>
   <link rel="stylesheet" href="/shop/styles.css">
+  <link rel="stylesheet" href="/shop/brand.css">
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-copy"><span>今日新鮮供應</span><h1>想吃什麼，慢慢挑</h1><p>選好商品後直接送出訂單，店家確認後會通知您。</p></div>
+  <header id="hero" class="hero">
+    <div class="hero-copy"><span id="storeName">今日新鮮供應</span><h1 id="tagline">想吃什麼，慢慢挑</h1><p id="storeDescription">選好商品後直接送出訂單，店家確認後會通知您。</p></div>
   </header>
   <main>
+    <div id="closedNotice" class="closed-notice" hidden>店家目前暫停接單，您仍可以查看菜單。</div>
     <section class="section-head"><div><small>MENU</small><h2>熱門商品</h2></div><button id="openCart" class="cart-button">購物車 <b id="cartCount">0</b></button></section>
     <div id="productList" class="products"><div class="loading">正在準備菜單…</div></div>
+    <footer id="storeInfo" class="store-info"></footer>
   </main>
 
   <aside id="cartSheet" class="sheet" aria-hidden="true">

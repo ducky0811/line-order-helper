@@ -4,6 +4,37 @@ const crypto = require('crypto');
 
 const MERCHANT_ID = process.env.MERCHANT_ID || 'default-store';
 
+const DEFAULT_SETTINGS = {
+  merchant_id: MERCHANT_ID,
+  store_name: '接單小幫手',
+  tagline: '想吃什麼，慢慢挑',
+  description: '選好商品後直接送出訂單，店家確認後會通知您。',
+  logo_url: '',
+  hero_image_url: '',
+  phone: '',
+  address: '',
+  business_hours: '',
+  accepting_orders: true
+};
+
+function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS) {
+  const text = (value, fallback, max) => String(value ?? fallback ?? '').trim().slice(0, max);
+  return {
+    ...existing,
+    merchant_id: MERCHANT_ID,
+    store_name: text(input.store_name, existing.store_name, 80) || DEFAULT_SETTINGS.store_name,
+    tagline: text(input.tagline, existing.tagline, 100),
+    description: text(input.description, existing.description, 240),
+    logo_url: text(input.logo_url, existing.logo_url, 1000),
+    hero_image_url: text(input.hero_image_url, existing.hero_image_url, 1000),
+    phone: text(input.phone, existing.phone, 40),
+    address: text(input.address, existing.address, 180),
+    business_hours: text(input.business_hours, existing.business_hours, 180),
+    accepting_orders: input.accepting_orders == null ? existing.accepting_orders !== false : input.accepting_orders !== false,
+    updated_at: new Date().toISOString()
+  };
+}
+
 function normalizeProduct(input, existing = {}) {
   const price = Number(input.price);
   if (!String(input.name || '').trim()) throw new Error('商品名稱不能空白');
@@ -28,6 +59,7 @@ class LocalStore {
     this.dataDir = dataDir;
     this.productsFile = path.join(dataDir, 'products.json');
     this.ordersFile = path.join(dataDir, 'orders.json');
+    this.settingsFile = path.join(dataDir, 'settings.json');
     this.seedProducts = seedProducts;
     this.writeQueue = Promise.resolve();
   }
@@ -45,6 +77,7 @@ class LocalStore {
       await this.writeJson(this.productsFile, seeded);
     }
     try { await fs.access(this.ordersFile); } catch { await this.writeJson(this.ordersFile, []); }
+    try { await fs.access(this.settingsFile); } catch { await this.writeJson(this.settingsFile, DEFAULT_SETTINGS); }
   }
 
   async readJson(file) {
@@ -129,6 +162,16 @@ class LocalStore {
     await this.writeJson(this.ordersFile, orders);
     return order;
   }
+
+  async getSettings() {
+    return normalizeSettings(await this.readJson(this.settingsFile));
+  }
+
+  async updateSettings(input) {
+    const settings = normalizeSettings(input, await this.getSettings());
+    await this.writeJson(this.settingsFile, settings);
+    return settings;
+  }
 }
 
 class SupabaseStore {
@@ -203,6 +246,21 @@ class SupabaseStore {
     if (!order) throw new Error('找不到訂單');
     return order;
   }
+
+  async getSettings() {
+    const rows = await this.request(`store_settings?merchant_id=eq.${encodeURIComponent(MERCHANT_ID)}&limit=1`);
+    return normalizeSettings(rows[0] || DEFAULT_SETTINGS);
+  }
+
+  async updateSettings(input) {
+    const settings = normalizeSettings(input, await this.getSettings());
+    const rows = await this.request('store_settings?on_conflict=merchant_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(settings)
+    });
+    return rows[0] || settings;
+  }
 }
 
 function createStore(rootDir, seedProducts = []) {
@@ -215,4 +273,4 @@ function createStore(rootDir, seedProducts = []) {
   return new LocalStore(path.join(rootDir, 'data'), seedProducts);
 }
 
-module.exports = { createStore, LocalStore, SupabaseStore, normalizeProduct };
+module.exports = { createStore, LocalStore, SupabaseStore, normalizeProduct, normalizeSettings, DEFAULT_SETTINGS };

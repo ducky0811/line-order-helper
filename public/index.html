@@ -29,6 +29,7 @@
       <nav>
         <button class="tab active" data-tab="products">商品管理</button>
         <button class="tab" data-tab="orders">訂單處理</button>
+        <button class="tab" data-tab="settings">店家設定</button>
       </nav>
 
       <section id="productsPanel" class="panel">
@@ -39,6 +40,21 @@
       <section id="ordersPanel" class="panel" hidden>
         <div class="panel-title"><div><h2>訂單</h2><p>更新狀態時會自動通知 LINE 客戶。</p></div><button id="refreshOrders" class="ghost">重新整理</button></div>
         <div id="orderList" class="order-list"></div>
+      </section>
+
+      <section id="settingsPanel" class="panel" hidden>
+        <div class="panel-title"><div><h2>店家設定</h2><p>內容會立即顯示在客戶點餐頁。</p></div></div>
+        <form id="settingsForm" class="settings-form">
+          <label>店家名稱<input id="storeName" maxlength="80" required></label>
+          <label>首頁標語<input id="tagline" maxlength="100" placeholder="想吃什麼，慢慢挑"></label>
+          <label>店家介紹<textarea id="storeDescription" rows="3" maxlength="240"></textarea></label>
+          <div class="two-col"><label>聯絡電話<input id="storePhone" maxlength="40"></label><label>營業時間<input id="businessHours" maxlength="180" placeholder="每日 11:00–20:00"></label></div>
+          <label>店家地址<input id="storeAddress" maxlength="180"></label>
+          <div class="two-col"><label>Logo 網址<input id="logoUrl" type="url" placeholder="https://..."></label><label>首頁封面網址<input id="heroImageUrl" type="url" placeholder="https://..."></label></div>
+          <label class="switch"><input id="acceptingOrders" type="checkbox"><span>目前開放客戶下單</span></label>
+          <p id="settingsError" class="error"></p>
+          <button type="submit">儲存店家設定</button>
+        </form>
       </section>
     </section>
   </main>

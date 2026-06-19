@@ -1,0 +1,21 @@
+.closed-notice {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid #f2c9b8;
+  border-radius: 14px;
+  background: #fff0e9;
+  color: #a23b19;
+  font-weight: 800;
+  text-align: center;
+}
+
+.store-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 40px;
+  padding: 22px 0;
+  border-top: 1px solid #eadfd5;
+  color: var(--muted);
+  font-size: 14px;
+}

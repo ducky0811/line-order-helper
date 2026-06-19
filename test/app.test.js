@@ -50,6 +50,17 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     assert.equal(products.length, 1);
     const orders = await fetch(`${base}/api/admin/orders`, { headers }).then(response => response.json());
     assert.equal(orders[0].customer_name, '測試客戶');
+    const settingsResponse = await fetch(`${base}/api/admin/settings`, {
+      method: 'PUT', headers, body: JSON.stringify({ store_name: '測試甜點店', accepting_orders: false })
+    });
+    assert.equal(settingsResponse.status, 200);
+    const config = await fetch(`${base}/api/shop/config`).then(response => response.json());
+    assert.equal(config.store_name, '測試甜點店');
+    const closedOrder = await fetch(`${base}/api/shop/orders`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_name: '客戶', phone: '0900', items: [{ product_id: products[0].id, quantity: 1 }] })
+    });
+    assert.equal(closedOrder.status, 409);
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

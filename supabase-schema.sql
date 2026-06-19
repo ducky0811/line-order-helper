@@ -28,11 +28,26 @@ create table if not exists public.orders (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.store_settings (
+  merchant_id text primary key,
+  store_name text not null default '接單小幫手',
+  tagline text not null default '想吃什麼，慢慢挑',
+  description text not null default '',
+  logo_url text not null default '',
+  hero_image_url text not null default '',
+  phone text not null default '',
+  address text not null default '',
+  business_hours text not null default '',
+  accepting_orders boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists products_merchant_idx on public.products (merchant_id, active, sort_order);
 create index if not exists orders_merchant_idx on public.orders (merchant_id, created_at desc);
 
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
+alter table public.store_settings enable row level security;
 -- 後端只使用 service role key；請勿把 service role key 放進瀏覽器端。
 
 -- 若舊測試資料庫已先建立 orders，可安全重跑以下欄位升級。

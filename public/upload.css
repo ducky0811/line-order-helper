@@ -20,3 +20,5 @@ summary {
   font-size: 13px;
   font-weight: 800;
 }
+
+.settings-form { max-width: 720px; }

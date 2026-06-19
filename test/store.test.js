@@ -28,3 +28,12 @@ test('訂單可以建立並更新狀態', async () => {
   const updated = await store.updateOrderStatus(order.id, 'ready');
   assert.equal(updated.status, 'ready');
 });
+
+test('店家可以更新品牌資料與暫停接單', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-settings-'));
+  const store = new LocalStore(dir);
+  await store.init();
+  const settings = await store.updateSettings({ store_name: '測試甜點店', accepting_orders: false });
+  assert.equal(settings.store_name, '測試甜點店');
+  assert.equal((await store.getSettings()).accepting_orders, false);
+});
