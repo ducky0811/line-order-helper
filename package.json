@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "check": "node --check index.js && node --check src/app.js && node --check src/store.js && node --check src/auth.js && node --check src/sheets.js && node --check src/bot.js",
+    "check": "node --check index.js && node --check src/app.js && node --check src/store.js && node --check src/auth.js && node --check src/sheets.js && node --check src/bot.js && node --check src/orders.js",
     "test": "node --test"
   },
   "keywords": [],

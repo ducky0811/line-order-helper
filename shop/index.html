@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ff6b35">
+  <title>線上點餐</title>
+  <link rel="stylesheet" href="/shop/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-copy"><span>今日新鮮供應</span><h1>想吃什麼，慢慢挑</h1><p>選好商品後直接送出訂單，店家確認後會通知您。</p></div>
+  </header>
+  <main>
+    <section class="section-head"><div><small>MENU</small><h2>熱門商品</h2></div><button id="openCart" class="cart-button">購物車 <b id="cartCount">0</b></button></section>
+    <div id="productList" class="products"><div class="loading">正在準備菜單…</div></div>
+  </main>
+
+  <aside id="cartSheet" class="sheet" aria-hidden="true">
+    <button id="sheetBackdrop" class="backdrop" aria-label="關閉購物車"></button>
+    <section class="sheet-card">
+      <div class="handle"></div>
+      <div class="sheet-title"><h2>您的購物車</h2><button id="closeCart">×</button></div>
+      <div id="cartItems"></div>
+      <div class="total"><span>合計</span><strong id="cartTotal">NT$ 0</strong></div>
+      <button id="startCheckout" class="primary">填寫訂購資料</button>
+    </section>
+  </aside>
+
+  <dialog id="checkoutDialog">
+    <form id="checkoutForm">
+      <div class="dialog-title"><div><small>CHECKOUT</small><h2>訂購資料</h2></div><button id="closeCheckout" type="button">×</button></div>
+      <label>取貨人姓名<input id="customerName" required maxlength="60" autocomplete="name"></label>
+      <label>聯絡電話<input id="phone" required maxlength="30" inputmode="tel" autocomplete="tel"></label>
+      <div class="choice"><label><input type="radio" name="fulfillment" value="pickup" checked> 到店取貨</label><label><input type="radio" name="fulfillment" value="delivery"> 外送</label></div>
+      <label>希望取貨時間<input id="pickupTime" placeholder="例如：今天 18:30"></label>
+      <label>備註<textarea id="note" rows="3" maxlength="300" placeholder="例如：飲料去冰、抵達請電話通知"></textarea></label>
+      <div class="checkout-total"><span>訂單金額</span><strong id="checkoutTotal">NT$ 0</strong></div>
+      <p id="checkoutError" class="error"></p>
+      <button id="submitOrder" class="primary" type="submit">送出訂單</button>
+    </form>
+  </dialog>
+
+  <dialog id="successDialog" class="success-dialog"><div class="success-icon">✓</div><h2>訂單已送出</h2><p id="successText"></p><button id="finishOrder" class="primary">完成</button></dialog>
+  <script src="/shop/app.js" defer></script>
+</body>
+</html>

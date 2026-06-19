@@ -5,6 +5,7 @@ const { createStore } = require('./store');
 const { createAuth } = require('./auth');
 const { createSheetsService } = require('./sheets');
 const { createBot } = require('./bot');
+const { buildOrder } = require('./orders');
 
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
@@ -28,8 +29,23 @@ async function createApp(options = {}) {
 
   app.use(express.json({ limit: '1mb' }));
   app.use('/admin', express.static(path.join(rootDir, 'public')));
+  app.use('/shop', express.static(path.join(rootDir, 'shop')));
   app.get('/', (_req, res) => res.redirect('/admin'));
   app.get('/health', (_req, res) => res.json({ ok: true, service: 'line-order-saas' }));
+  app.get('/api/shop/products', async (_req, res, next) => {
+    try { res.json(await store.listProducts({ activeOnly: true })); } catch (error) { next(error); }
+  });
+  app.post('/api/shop/orders', async (req, res, next) => {
+    try {
+      // LINE user ID 之後只接受經 LIFF 驗證的身分，不信任公開網頁自行提交的值。
+      const input = await buildOrder(store, { ...req.body, line_user_id: null });
+      const order = await store.createOrder(input);
+      const time = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+      await sheets.saveOrder({ time, summary: input.summary, total: input.total })
+        .catch(error => console.error('❌ 寫入 Google Sheets 失敗：', error));
+      res.status(201).json({ id: order.id, total: order.total, status: order.status });
+    } catch (error) { next(error); }
+  });
   app.post('/api/admin/login', auth.login);
 
   const admin = express.Router();

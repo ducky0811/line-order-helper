@@ -23,6 +23,17 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     assert.equal(health.ok, true);
     const page = await fetch(`${base}/admin/`);
     assert.equal(page.status, 200);
+    const shopPage = await fetch(`${base}/shop/`);
+    assert.equal(shopPage.status, 200);
+    const shopProducts = await fetch(`${base}/api/shop/products`).then(response => response.json());
+    const orderResponse = await fetch(`${base}/api/shop/orders`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_name: '測試客戶', phone: '0912345678',
+        items: [{ product_id: shopProducts[0].id, quantity: 2 }]
+      })
+    });
+    assert.equal(orderResponse.status, 201);
 
     const login = await fetch(`${base}/api/admin/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -37,6 +48,8 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     await fetch(`${base}/api/admin/products/${created.id}`, { method: 'DELETE', headers });
     const products = await fetch(`${base}/api/admin/products`, { headers }).then(response => response.json());
     assert.equal(products.length, 1);
+    const orders = await fetch(`${base}/api/admin/orders`, { headers }).then(response => response.json());
+    assert.equal(orders[0].customer_name, '測試客戶');
   } finally {
     await new Promise(resolve => server.close(resolve));
   }

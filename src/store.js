@@ -97,6 +97,11 @@ class LocalStore {
       id: crypto.randomUUID(),
       merchant_id: MERCHANT_ID,
       line_user_id: input.line_user_id,
+      customer_name: input.customer_name || '',
+      phone: input.phone || '',
+      fulfillment: input.fulfillment || 'pickup',
+      pickup_time: input.pickup_time || '',
+      note: input.note || '',
       items: input.items,
       summary: input.summary,
       total: Number(input.total),
@@ -178,6 +183,8 @@ class SupabaseStore {
       method: 'POST',
       body: JSON.stringify({
         id: crypto.randomUUID(), merchant_id: MERCHANT_ID, line_user_id: input.line_user_id,
+        customer_name: input.customer_name || '', phone: input.phone || '',
+        fulfillment: input.fulfillment || 'pickup', pickup_time: input.pickup_time || '', note: input.note || '',
         items: input.items, summary: input.summary, total: Number(input.total), status: 'new'
       })
     });
