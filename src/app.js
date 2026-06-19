@@ -7,6 +7,7 @@ const { createSheetsService } = require('./sheets');
 const { createBot } = require('./bot');
 const { buildOrder } = require('./orders');
 const { createImageService } = require('./images');
+const { createLineIdentityService } = require('./line-identity');
 
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
@@ -18,6 +19,7 @@ async function createApp(options = {}) {
   const bot = options.bot || createBot({ store, sheets });
   const auth = options.auth || createAuth();
   const images = options.images || createImageService();
+  const lineIdentity = options.lineIdentity || createLineIdentityService();
 
   app.post('/webhook', bot.middleware, async (req, res) => {
     try {
@@ -41,7 +43,7 @@ async function createApp(options = {}) {
     try {
       const settings = await store.getSettings();
       const { merchant_line_user_id, ...publicSettings } = settings;
-      res.json(publicSettings);
+      res.json({ ...publicSettings, liff_id: process.env.LIFF_ID || '' });
     } catch (error) { next(error); }
   });
   app.post('/api/shop/orders', async (req, res, next) => {
@@ -52,8 +54,9 @@ async function createApp(options = {}) {
         error.status = 409;
         throw error;
       }
-      // LINE user ID 之後只接受經 LIFF 驗證的身分，不信任公開網頁自行提交的值。
-      const input = await buildOrder(store, { ...req.body, line_user_id: null });
+      // 只信任由 LINE API 驗證過的 Access Token，不接受瀏覽器自行填入 user ID。
+      const lineUserId = await lineIdentity.verify(req.get('x-line-access-token') || req.body?.line_access_token);
+      const input = await buildOrder(store, { ...req.body, line_user_id: lineUserId });
       const order = await store.createOrder(input);
       const time = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
       await sheets.saveOrder({ time, summary: input.summary, total: input.total })

@@ -13,7 +13,8 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
   const auth = createAuth({ password: 'demo-password', secret: 'test-secret' });
   const bot = { middleware: (_req, _res, next) => next(), handleEvent: async () => null, notifyOrderStatus: async () => null, notifyNewOrder: async () => null };
   const sheets = { saveOrder: async () => null };
-  const { app } = await createApp({ store, auth, bot, sheets });
+  const lineIdentity = { verify: async token => token === 'valid-line-token' ? 'Ucustomer' : null };
+  const { app } = await createApp({ store, auth, bot, sheets, lineIdentity });
   const server = app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -27,7 +28,7 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     assert.equal(shopPage.status, 200);
     const shopProducts = await fetch(`${base}/api/shop/products`).then(response => response.json());
     const orderResponse = await fetch(`${base}/api/shop/orders`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Line-Access-Token': 'valid-line-token' },
       body: JSON.stringify({
         customer_name: '測試客戶', phone: '0912345678',
         items: [{ product_id: shopProducts[0].id, quantity: 2 }]
@@ -50,6 +51,7 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     assert.equal(products.length, 1);
     const orders = await fetch(`${base}/api/admin/orders`, { headers }).then(response => response.json());
     assert.equal(orders[0].customer_name, '測試客戶');
+    assert.equal(orders[0].line_user_id, 'Ucustomer');
     const settingsResponse = await fetch(`${base}/api/admin/settings`, {
       method: 'PUT', headers, body: JSON.stringify({ store_name: '測試甜點店', accepting_orders: false })
     });

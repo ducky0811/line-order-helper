@@ -1,4 +1,4 @@
-const state = { token: localStorage.getItem('adminToken'), products: [], orders: [] };
+const state = { token: localStorage.getItem('adminToken'), products: [], orders: [], activeTab: 'products' };
 const $ = selector => document.querySelector(selector);
 const statusLabels = { new:'新訂單',confirmed:'已確認',preparing:'製作中',ready:'可取貨',completed:'已完成',cancelled:'已取消' };
 
@@ -29,7 +29,7 @@ $('#logoutButton').addEventListener('click',logout);
 
 document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab===button));
-  const selected=button.dataset.tab; $('#productsPanel').hidden=selected!=='products'; $('#ordersPanel').hidden=selected!=='orders'; $('#settingsPanel').hidden=selected!=='settings';
+  const selected=button.dataset.tab; state.activeTab=selected; $('#productsPanel').hidden=selected!=='products'; $('#ordersPanel').hidden=selected!=='orders'; $('#settingsPanel').hidden=selected!=='settings';
   if(selected==='orders') loadOrders(); if(selected==='settings') loadSettings();
 }));
 
@@ -73,6 +73,7 @@ $('#deleteProduct').addEventListener('click',async()=>{ const id=$('#productId')
 async function loadOrders(){try{state.orders=await api('/api/admin/orders');renderOrders();}catch(error){toast(error.message);}}
 function renderOrders(){ $('#orderList').innerHTML=state.orders.length?state.orders.map(order=>`<article class="order"><div><strong>#${order.id.slice(0,8)} · NT$ ${order.total}</strong><p>${escapeHtml(order.summary)}</p><p>${escapeHtml(order.customer_name||'LINE 客戶')} · ${escapeHtml(order.phone||'未留電話')} · ${order.fulfillment==='delivery'?'外送':'到店取貨'}${order.pickup_time?` · ${escapeHtml(order.pickup_time)}`:''}</p>${order.note?`<p>備註：${escapeHtml(order.note)}</p>`:''}<small>${new Date(order.created_at).toLocaleString('zh-TW')}</small></div><select data-id="${order.id}">${Object.entries(statusLabels).map(([value,label])=>`<option value="${value}" ${order.status===value?'selected':''}>${label}</option>`).join('')}</select></article>`).join(''):'<div class="empty">目前還沒有訂單。</div>'; document.querySelectorAll('.order select').forEach(select=>select.addEventListener('change',async()=>{try{await api(`/api/admin/orders/${select.dataset.id}/status`,{method:'PATCH',body:JSON.stringify({status:select.value})});toast('訂單狀態已更新並通知客戶');}catch(error){toast(error.message);loadOrders();}})); }
 $('#refreshOrders').addEventListener('click',loadOrders);
+setInterval(()=>{if(state.token&&state.activeTab==='orders'&&!document.hidden)loadOrders();},10000);
 
 async function loadSettings(){try{const settings=await api('/api/admin/settings');$('#storeName').value=settings.store_name||'';$('#tagline').value=settings.tagline||'';$('#storeDescription').value=settings.description||'';$('#storePhone').value=settings.phone||'';$('#businessHours').value=settings.business_hours||'';$('#storeAddress').value=settings.address||'';$('#logoUrl').value=settings.logo_url||'';$('#heroImageUrl').value=settings.hero_image_url||'';$('#acceptingOrders').checked=settings.accepting_orders!==false;}catch(error){toast(error.message);}}
 $('#settingsForm').addEventListener('submit',async event=>{event.preventDefault();$('#settingsError').textContent='';const button=event.submitter;button.disabled=true;try{await api('/api/admin/settings',{method:'PUT',body:JSON.stringify({store_name:$('#storeName').value,tagline:$('#tagline').value,description:$('#storeDescription').value,phone:$('#storePhone').value,business_hours:$('#businessHours').value,address:$('#storeAddress').value,logo_url:$('#logoUrl').value,hero_image_url:$('#heroImageUrl').value,accepting_orders:$('#acceptingOrders').checked})});toast('店家設定已更新');}catch(error){$('#settingsError').textContent=error.message;}finally{button.disabled=false;}});
