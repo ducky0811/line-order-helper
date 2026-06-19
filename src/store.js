@@ -136,9 +136,10 @@ class SupabaseStore {
     this.url = url.replace(/\/$/, '');
     this.headers = {
       apikey: key,
-      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json'
     };
+    // 舊版 service_role 是 JWT；新版 sb_secret 金鑰只需要 apikey 標頭。
+    if (key.split('.').length === 3) this.headers.Authorization = `Bearer ${key}`;
   }
 
   async request(pathname, options = {}) {
@@ -205,9 +206,10 @@ class SupabaseStore {
 }
 
 function createStore(rootDir, seedProducts = []) {
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (process.env.SUPABASE_URL && supabaseKey) {
     console.log('☁️ 使用 Supabase 雲端商品與訂單資料庫');
-    return new SupabaseStore(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    return new SupabaseStore(process.env.SUPABASE_URL, supabaseKey);
   }
   console.warn('⚠️ 未設定 Supabase，目前使用本機資料模式');
   return new LocalStore(path.join(rootDir, 'data'), seedProducts);
