@@ -14,7 +14,8 @@ const DEFAULT_SETTINGS = {
   phone: '',
   address: '',
   business_hours: '',
-  accepting_orders: true
+  accepting_orders: true,
+  merchant_line_user_id: ''
 };
 
 function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS) {
@@ -31,6 +32,7 @@ function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS) {
     address: text(input.address, existing.address, 180),
     business_hours: text(input.business_hours, existing.business_hours, 180),
     accepting_orders: input.accepting_orders == null ? existing.accepting_orders !== false : input.accepting_orders !== false,
+    merchant_line_user_id: text(input.merchant_line_user_id, existing.merchant_line_user_id, 100),
     updated_at: new Date().toISOString()
   };
 }

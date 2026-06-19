@@ -11,7 +11,7 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-app-'));
   const store = new LocalStore(dir, [{ name: '紅茶', price: 30 }]);
   const auth = createAuth({ password: 'demo-password', secret: 'test-secret' });
-  const bot = { middleware: (_req, _res, next) => next(), handleEvent: async () => null, notifyOrderStatus: async () => null };
+  const bot = { middleware: (_req, _res, next) => next(), handleEvent: async () => null, notifyOrderStatus: async () => null, notifyNewOrder: async () => null };
   const sheets = { saveOrder: async () => null };
   const { app } = await createApp({ store, auth, bot, sheets });
   const server = app.listen(0);

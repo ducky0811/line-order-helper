@@ -39,6 +39,7 @@ create table if not exists public.store_settings (
   address text not null default '',
   business_hours text not null default '',
   accepting_orders boolean not null default true,
+  merchant_line_user_id text not null default '',
   updated_at timestamptz not null default now()
 );
 
@@ -56,6 +57,7 @@ alter table public.orders add column if not exists phone text not null default '
 alter table public.orders add column if not exists fulfillment text not null default 'pickup';
 alter table public.orders add column if not exists pickup_time text not null default '';
 alter table public.orders add column if not exists note text not null default '';
+alter table public.store_settings add column if not exists merchant_line_user_id text not null default '';
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('product-images', 'product-images', true, 2097152, array['image/jpeg','image/png','image/webp'])

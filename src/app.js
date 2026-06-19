@@ -38,7 +38,11 @@ async function createApp(options = {}) {
     try { res.json(await store.listProducts({ activeOnly: true })); } catch (error) { next(error); }
   });
   app.get('/api/shop/config', async (_req, res, next) => {
-    try { res.json(await store.getSettings()); } catch (error) { next(error); }
+    try {
+      const settings = await store.getSettings();
+      const { merchant_line_user_id, ...publicSettings } = settings;
+      res.json(publicSettings);
+    } catch (error) { next(error); }
   });
   app.post('/api/shop/orders', async (req, res, next) => {
     try {
@@ -54,6 +58,7 @@ async function createApp(options = {}) {
       const time = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
       await sheets.saveOrder({ time, summary: input.summary, total: input.total })
         .catch(error => console.error('❌ 寫入 Google Sheets 失敗：', error));
+      await bot.notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error));
       res.status(201).json({ id: order.id, total: order.total, status: order.status });
     } catch (error) { next(error); }
   });
