@@ -25,8 +25,19 @@ test('訂單可以建立並更新狀態', async () => {
   const store = new LocalStore(dir);
   await store.init();
   const order = await store.createOrder({ line_user_id: 'U123', items: [], summary: '雞排x1', total: 80 });
+  assert.match(order.claim_code, /^[A-F0-9]{16}$/);
   const updated = await store.updateOrderStatus(order.id, 'ready');
   assert.equal(updated.status, 'ready');
+});
+
+test('外部網站訂單可用安全碼綁定 LINE 客戶', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-claim-'));
+  const store = new LocalStore(dir);
+  await store.init();
+  const order = await store.createOrder({ items: [], summary: '蛋糕x1', total: 500 });
+  const claimed = await store.claimOrder(order.claim_code.toLowerCase(), 'Ucustomer');
+  assert.equal(claimed.line_user_id, 'Ucustomer');
+  await assert.rejects(() => store.claimOrder(order.claim_code, 'Uother'), /其他 LINE 帳號/);
 });
 
 test('店家可以更新品牌資料與暫停接單', async () => {

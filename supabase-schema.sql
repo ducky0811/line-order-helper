@@ -15,6 +15,8 @@ create table if not exists public.orders (
   id uuid primary key,
   merchant_id text not null,
   line_user_id text,
+  claim_code text unique,
+  claimed_at timestamptz,
   customer_name text not null default '',
   phone text not null default '',
   fulfillment text not null default 'pickup',
@@ -57,6 +59,8 @@ alter table public.orders add column if not exists phone text not null default '
 alter table public.orders add column if not exists fulfillment text not null default 'pickup';
 alter table public.orders add column if not exists pickup_time text not null default '';
 alter table public.orders add column if not exists note text not null default '';
+alter table public.orders add column if not exists claim_code text unique;
+alter table public.orders add column if not exists claimed_at timestamptz;
 alter table public.store_settings add column if not exists merchant_line_user_id text not null default '';
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

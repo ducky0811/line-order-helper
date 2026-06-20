@@ -4,6 +4,10 @@ const crypto = require('crypto');
 
 const MERCHANT_ID = process.env.MERCHANT_ID || 'default-store';
 
+function createClaimCode() {
+  return crypto.randomBytes(8).toString('hex').toUpperCase();
+}
+
 const DEFAULT_SETTINGS = {
   merchant_id: MERCHANT_ID,
   store_name: '接單小幫手',
@@ -132,6 +136,8 @@ class LocalStore {
       id: crypto.randomUUID(),
       merchant_id: MERCHANT_ID,
       line_user_id: input.line_user_id,
+      claim_code: createClaimCode(),
+      claimed_at: input.line_user_id ? new Date().toISOString() : null,
       customer_name: input.customer_name || '',
       phone: input.phone || '',
       fulfillment: input.fulfillment || 'pickup',
@@ -160,6 +166,22 @@ class LocalStore {
     const order = orders.find(item => item.id === id);
     if (!order) throw new Error('找不到訂單');
     order.status = status;
+    order.updated_at = new Date().toISOString();
+    await this.writeJson(this.ordersFile, orders);
+    return order;
+  }
+
+  async findOrderByClaimCode(code) {
+    return (await this.listOrders()).find(item => item.claim_code === String(code || '').trim().toUpperCase()) || null;
+  }
+
+  async claimOrder(code, lineUserId) {
+    const orders = await this.listOrders();
+    const order = orders.find(item => item.claim_code === String(code || '').trim().toUpperCase());
+    if (!order) throw new Error('找不到這筆訂單，請確認訂單碼');
+    if (order.line_user_id && order.line_user_id !== lineUserId) throw new Error('這筆訂單已由其他 LINE 帳號確認');
+    order.line_user_id = lineUserId;
+    order.claimed_at = order.claimed_at || new Date().toISOString();
     order.updated_at = new Date().toISOString();
     await this.writeJson(this.ordersFile, orders);
     return order;
@@ -229,6 +251,7 @@ class SupabaseStore {
       method: 'POST',
       body: JSON.stringify({
         id: crypto.randomUUID(), merchant_id: MERCHANT_ID, line_user_id: input.line_user_id,
+        claim_code: createClaimCode(), claimed_at: input.line_user_id ? new Date().toISOString() : null,
         customer_name: input.customer_name || '', phone: input.phone || '',
         fulfillment: input.fulfillment || 'pickup', pickup_time: input.pickup_time || '', note: input.note || '',
         items: input.items, summary: input.summary, total: Number(input.total), status: 'new'
@@ -247,6 +270,22 @@ class SupabaseStore {
     });
     if (!order) throw new Error('找不到訂單');
     return order;
+  }
+
+  async findOrderByClaimCode(code) {
+    const rows = await this.request(`orders?merchant_id=eq.${encodeURIComponent(MERCHANT_ID)}&claim_code=eq.${encodeURIComponent(String(code || '').trim().toUpperCase())}&limit=1`);
+    return rows[0] || null;
+  }
+
+  async claimOrder(code, lineUserId) {
+    const order = await this.findOrderByClaimCode(code);
+    if (!order) throw new Error('找不到這筆訂單，請確認訂單碼');
+    if (order.line_user_id && order.line_user_id !== lineUserId) throw new Error('這筆訂單已由其他 LINE 帳號確認');
+    const rows = await this.request(`orders?id=eq.${encodeURIComponent(order.id)}&merchant_id=eq.${encodeURIComponent(MERCHANT_ID)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ line_user_id: lineUserId, claimed_at: order.claimed_at || new Date().toISOString(), updated_at: new Date().toISOString() })
+    });
+    return rows[0] || { ...order, line_user_id: lineUserId };
   }
 
   async getSettings() {

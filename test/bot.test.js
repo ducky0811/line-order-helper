@@ -37,6 +37,12 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
     assert.match(JSON.stringify(calls.pushes[0]), /確認訂單/);
 
     await bot.handleEvent({
+      type: 'message', replyToken: 'reply-customer', source: { userId: 'Ucustomer' },
+      message: { type: 'text', text: `確認訂單 ${order.claim_code}` }
+    });
+    assert.equal((await store.listOrders())[0].line_user_id, 'Ucustomer');
+
+    await bot.handleEvent({
       type: 'postback', replyToken: 'reply-intruder', source: { userId: 'Uother' },
       postback: { data: `action=orderStatus&orderId=${order.id}&status=completed` }
     });

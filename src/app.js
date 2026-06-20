@@ -21,6 +21,14 @@ async function createApp(options = {}) {
   const images = options.images || createImageService();
   const lineIdentity = options.lineIdentity || createLineIdentityService();
 
+  function lineConfirmUrl(order) {
+    const rawId = String(process.env.LINE_OFFICIAL_ACCOUNT_ID || '').trim();
+    const officialId = rawId.replace(/[^@a-zA-Z0-9._-]/g, '');
+    if (!officialId || !order.claim_code) return '';
+    const message = encodeURIComponent(`確認訂單 ${order.claim_code}`);
+    return `https://line.me/R/oaMessage/${officialId}/?${message}`;
+  }
+
   app.post('/webhook', bot.middleware, async (req, res) => {
     try {
       const results = await Promise.all(req.body.events.map(bot.handleEvent));
@@ -34,6 +42,7 @@ async function createApp(options = {}) {
   app.use(express.json({ limit: '4mb' }));
   app.use('/admin', express.static(path.join(rootDir, 'public')));
   app.use('/shop', express.static(path.join(rootDir, 'shop')));
+  app.use('/track', express.static(path.join(rootDir, 'track')));
   app.get('/', (_req, res) => res.redirect('/admin'));
   app.get('/health', (_req, res) => res.json({ ok: true, service: 'line-order-saas' }));
   app.get('/api/shop/products', async (_req, res, next) => {
@@ -62,7 +71,28 @@ async function createApp(options = {}) {
       await sheets.saveOrder({ time, summary: input.summary, total: input.total })
         .catch(error => console.error('❌ 寫入 Google Sheets 失敗：', error));
       await bot.notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error));
-      res.status(201).json({ id: order.id, total: order.total, status: order.status });
+      res.status(201).json({
+        id: order.id,
+        total: order.total,
+        status: order.status,
+        claim_code: order.claim_code,
+        line_confirm_url: lineConfirmUrl(order),
+        tracking_url: `/track/?code=${encodeURIComponent(order.claim_code || '')}`
+      });
+    } catch (error) { next(error); }
+  });
+  app.get('/api/shop/orders/:claimCode/status', async (req, res, next) => {
+    try {
+      const order = await store.findOrderByClaimCode(req.params.claimCode);
+      if (!order) return res.status(404).json({ error: '找不到訂單' });
+      res.json({
+        id: order.id,
+        summary: order.summary,
+        total: order.total,
+        status: order.status,
+        created_at: order.created_at,
+        claimed: Boolean(order.line_user_id)
+      });
     } catch (error) { next(error); }
   });
   app.post('/api/admin/login', auth.login);

@@ -35,6 +35,10 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
       })
     });
     assert.equal(orderResponse.status, 201);
+    const orderResult = await orderResponse.json();
+    assert.match(orderResult.claim_code, /^[A-F0-9]{16}$/);
+    const tracked = await fetch(`${base}/api/shop/orders/${orderResult.claim_code}/status`).then(response => response.json());
+    assert.equal(tracked.total, 60);
 
     const login = await fetch(`${base}/api/admin/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

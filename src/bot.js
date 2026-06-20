@@ -76,6 +76,18 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
       await store.updateSettings({ merchant_line_user_id: userId });
       return reply(event.replyToken, { type: 'text', text: '✅ 店家 LINE 綁定成功！之後的新訂單會通知到這裡。' });
     }
+    if (text.startsWith('確認訂單 ')) {
+      const claimCode = text.slice(5).trim().toUpperCase();
+      try {
+        const order = await store.claimOrder(claimCode, userId);
+        return reply(event.replyToken, {
+          type: 'text',
+          text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n總計：${order.total} 元\n\n店家更新進度時會通知您。`
+        });
+      } catch (error) {
+        return reply(event.replyToken, { type: 'text', text: `❌ ${error.message}` });
+      }
+    }
     const products = await getProducts();
     if (!carts.has(userId)) carts.set(userId, {});
     const cart = carts.get(userId);

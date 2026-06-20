@@ -19,3 +19,7 @@
   color: var(--muted);
   font-size: 14px;
 }
+
+.line-confirm { display: block; text-decoration: none; margin-top: 18px; }
+.track-link { display: block; margin: 16px 0; color: var(--orange); font-weight: 800; }
+.secondary { width: 100%; border-radius: 14px; padding: 13px; background: #f3eee9; color: var(--ink); font-weight: 800; }
