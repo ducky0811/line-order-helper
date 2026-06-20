@@ -30,6 +30,7 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
       message: { type: 'text', text: '綁定店家 246810' }
     });
     assert.equal((await store.getSettings()).merchant_line_user_id, 'Umerchant');
+    await store.updateSettings({ bank_name: '測試銀行', bank_code: '123', bank_account: '987654321', bank_account_name: '測試商店' });
 
     const order = await store.createOrder({ customer_name: '客戶', phone: '0900', items: [], summary: '蛋糕x1', total: 500, payment_method: 'bank_transfer' });
     await bot.notifyNewOrder(order);
@@ -41,6 +42,7 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
       message: { type: 'text', text: `確認訂單 ${order.claim_code}` }
     });
     assert.equal((await store.listOrders())[0].line_user_id, 'Ucustomer');
+    assert.match(JSON.stringify(calls.replies.at(-1)), /帳號：987654321/);
 
     await bot.handleEvent({
       type: 'postback', replyToken: 'reply-intruder', source: { userId: 'Uother' },

@@ -90,9 +90,14 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
       const claimCode = text.slice(5).trim().toUpperCase();
       try {
         const order = await store.claimOrder(claimCode, userId);
+        const settings = await store.getSettings();
+        const paymentDetails = order.payment_method === 'bank_transfer'
+          ? `\n\n🏦 匯款資料\n${settings.bank_name || ''}${settings.bank_code ? `（${settings.bank_code}）` : ''}\n帳號：${settings.bank_account || ''}\n戶名：${settings.bank_account_name || ''}${settings.payment_instructions ? `\n${settings.payment_instructions}` : ''}`
+          : '\n\n付款方式：現金取貨';
+        const paymentFollowup = order.payment_method === 'bank_transfer' ? '\n完成匯款後，請到訂單進度頁回填帳號末五碼。' : '';
         return reply(event.replyToken, {
           type: 'text',
-          text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n總計：${order.total} 元\n\n店家更新進度時會通知您。`
+          text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n總計：${order.total} 元${paymentDetails}${paymentFollowup}\n\n店家更新進度時會通知您。`
         });
       } catch (error) {
         return reply(event.replyToken, { type: 'text', text: `❌ ${error.message}` });
