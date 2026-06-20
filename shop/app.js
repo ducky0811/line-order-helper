@@ -16,8 +16,10 @@ $('#checkoutForm').addEventListener('submit',async event=>{
   try{
     const response=await fetch('/api/shop/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json();if(!response.ok)throw new Error(result.error||'送出失敗');
     $('#checkoutDialog').close();$('#successText').textContent=`訂單編號 ${result.id.slice(0,8)}，金額 ${money(result.total)}。`;
+    const claimMessage=`確認訂單 ${result.claim_code||''}`;$('#claimBox').hidden=!result.claim_code;$('#claimMessage').textContent=claimMessage;$('#copyClaim').dataset.message=claimMessage;
     $('#lineConfirm').hidden=!result.line_confirm_url;$('#lineConfirm').href=result.line_confirm_url||'#';$('#trackOrder').href=result.tracking_url||'#';
     $('#successDialog').showModal();state.cart={};renderCart();event.target.reset();
   }catch(error){$('#checkoutError').textContent=error.message;}finally{button.disabled=false;button.textContent='送出訂單';}
 });
+$('#copyClaim').addEventListener('click',async event=>{const text=event.currentTarget.dataset.message||'';try{await navigator.clipboard.writeText(text);}catch{const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();}event.currentTarget.textContent='已複製，請到 LINE 貼上';setTimeout(()=>event.currentTarget.textContent='複製確認訊息',2200);});
 $('#finishOrder').addEventListener('click',()=>$('#successDialog').close());Promise.all([loadConfig(),loadProducts()]).then(()=>{renderProducts();renderCart();});

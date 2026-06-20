@@ -9,6 +9,13 @@ const { buildOrder } = require('./orders');
 const { createImageService } = require('./images');
 const { createLineIdentityService } = require('./line-identity');
 
+function createLineConfirmUrl(order, rawId) {
+  const officialId = String(rawId || '').trim().replace(/[^@a-zA-Z0-9._-]/g, '');
+  if (!officialId || !order.claim_code) return '';
+  const message = encodeURIComponent(`確認訂單 ${order.claim_code}`);
+  return `https://line.me/R/oaMessage/${encodeURIComponent(officialId)}/?${message}`;
+}
+
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
   const app = express();
@@ -21,13 +28,6 @@ async function createApp(options = {}) {
   const images = options.images || createImageService();
   const lineIdentity = options.lineIdentity || createLineIdentityService();
 
-  function lineConfirmUrl(order) {
-    const rawId = String(process.env.LINE_OFFICIAL_ACCOUNT_ID || '').trim();
-    const officialId = rawId.replace(/[^@a-zA-Z0-9._-]/g, '');
-    if (!officialId || !order.claim_code) return '';
-    const message = encodeURIComponent(`確認訂單 ${order.claim_code}`);
-    return `https://line.me/R/oaMessage/${officialId}/?${message}`;
-  }
 
   app.post('/webhook', bot.middleware, async (req, res) => {
     try {
@@ -76,7 +76,7 @@ async function createApp(options = {}) {
         total: order.total,
         status: order.status,
         claim_code: order.claim_code,
-        line_confirm_url: lineConfirmUrl(order),
+        line_confirm_url: createLineConfirmUrl(order, process.env.LINE_OFFICIAL_ACCOUNT_ID),
         tracking_url: `/track/?code=${encodeURIComponent(order.claim_code || '')}`
       });
     } catch (error) { next(error); }
@@ -140,4 +140,4 @@ async function createApp(options = {}) {
   return { app, store, bot };
 }
 
-module.exports = { createApp };
+module.exports = { createApp, createLineConfirmUrl };

@@ -3,9 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('fs/promises');
 const os = require('os');
 const path = require('path');
-const { createApp } = require('../src/app');
+const { createApp, createLineConfirmUrl } = require('../src/app');
 const { LocalStore } = require('../src/store');
 const { createAuth } = require('../src/auth');
+
+test('LINE 確認連結包含官方帳號與預填訂單訊息', () => {
+  const url = createLineConfirmUrl({ claim_code: 'ABC123' }, '@demo');
+  assert.match(url, /%40demo/);
+  assert.match(decodeURIComponent(url), /確認訂單 ABC123/);
+});
 
 test('管理後台可以登入並完成商品 CRUD', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-app-'));

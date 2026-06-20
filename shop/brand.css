@@ -23,3 +23,8 @@
 .line-confirm { display: block; text-decoration: none; margin-top: 18px; }
 .track-link { display: block; margin: 16px 0; color: var(--orange); font-weight: 800; }
 .secondary { width: 100%; border-radius: 14px; padding: 13px; background: #f3eee9; color: var(--ink); font-weight: 800; }
+.claim-box { margin-top: 16px; padding: 14px; border-radius: 14px; background: #fff5ef; text-align: left; }
+.claim-box small { display: block; color: #8b5d49; font-weight: 800; }
+.claim-box code { display: block; margin: 8px 0 12px; padding: 10px; border-radius: 9px; background: #fff; color: #44271b; font-size: 14px; font-weight: 900; word-break: break-all; }
+.claim-box p { margin: 10px 0 0; color: #7a6258; font-size: 12px; }
+.copy-button { width: 100%; border-radius: 10px; padding: 10px; background: #25262b; color: #fff; font-weight: 800; }
