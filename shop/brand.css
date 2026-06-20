@@ -29,3 +29,4 @@
 .claim-box p { margin: 10px 0 0; color: #7a6258; font-size: 12px; }
 .copy-button { width: 100%; border-radius: 10px; padding: 10px; background: #25262b; color: #fff; font-weight: 800; }
 .payment-info { margin-top: 16px; padding: 15px; border-radius: 14px; background: #eef7ff; color: #23405c; text-align: left; line-height: 1.7; }
+dialog { max-height: 88dvh; overflow-y: auto; }

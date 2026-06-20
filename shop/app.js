@@ -15,8 +15,8 @@ $('#checkoutForm').addEventListener('submit',async event=>{
   $('#checkoutError').textContent='';button.disabled=true;button.textContent='送出中…';
   try{
     const response=await fetch('/api/shop/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json();if(!response.ok)throw new Error(result.error||'送出失敗');
-    $('#checkoutDialog').close();$('#successText').textContent=`訂單編號 ${result.id.slice(0,8)}，金額 ${money(result.total)}。`;
-    const info=result.payment_info;$('#paymentInfo').hidden=!info;$('#paymentInfo').innerHTML=info?`<strong>銀行轉帳資料</strong><br>${escapeHtml(info.bank_name||'')}（${escapeHtml(info.bank_code||'')}）<br>帳號：${escapeHtml(info.bank_account||'')}<br>戶名：${escapeHtml(info.bank_account_name||'')}${info.instructions?`<br>${escapeHtml(info.instructions)}`:''}`:'';
+    $('#checkoutDialog').close();const isBankTransfer=result.payment_method==='bank_transfer';$('#successText').textContent=`訂單編號 ${result.id.slice(0,8)}，金額 ${money(result.total)}。付款方式：${isBankTransfer?'銀行轉帳':'現金取貨'}。`;
+    const info=result.payment_info;const paymentBox=$('#paymentInfo');paymentBox.innerHTML=info?`<strong>請匯款至以下帳戶</strong><br>${escapeHtml(info.bank_name||'')}（${escapeHtml(info.bank_code||'')}）<br><b>帳號：${escapeHtml(info.bank_account||'')}</b><br>戶名：${escapeHtml(info.bank_account_name||'')}${info.instructions?`<br>${escapeHtml(info.instructions)}`:''}`:'';paymentBox.toggleAttribute('hidden',!info);
     const claimMessage=`確認訂單 ${result.claim_code||''}`;$('#claimBox').hidden=!result.claim_code;$('#claimMessage').textContent=claimMessage;$('#copyClaim').dataset.message=claimMessage;
     $('#lineConfirm').hidden=!result.line_confirm_url;$('#lineConfirm').href=result.line_confirm_url||'#';$('#trackOrder').href=result.tracking_url||'#';
     $('#successDialog').showModal();state.cart={};renderCart();event.target.reset();
