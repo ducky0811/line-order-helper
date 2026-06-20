@@ -22,6 +22,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
     throw new Error('缺少 CHANNEL_ACCESS_TOKEN 或 CHANNEL_SECRET');
   }
   const client = providedClient || new line.messagingApi.MessagingApiClient({ channelAccessToken: config.channelAccessToken });
+  const publicBaseUrl = String(providedConfig?.publicBaseUrl || process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || '').trim().replace(/\/$/, '');
   const carts = new Map();
 
   async function reply(replyToken, messages) {
@@ -95,9 +96,10 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
           ? `\n\n🏦 匯款資料\n${settings.bank_name || ''}${settings.bank_code ? `（${settings.bank_code}）` : ''}\n帳號：${settings.bank_account || ''}\n戶名：${settings.bank_account_name || ''}${settings.payment_instructions ? `\n${settings.payment_instructions}` : ''}`
           : '\n\n付款方式：現金取貨';
         const paymentFollowup = order.payment_method === 'bank_transfer' ? '\n完成匯款後，請到訂單進度頁回填帳號末五碼。' : '';
+        const trackingLink = publicBaseUrl ? `\n\n查看訂單／回填末五碼：\n${publicBaseUrl}/track/?code=${encodeURIComponent(order.claim_code || claimCode)}` : '';
         return reply(event.replyToken, {
           type: 'text',
-          text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n總計：${order.total} 元${paymentDetails}${paymentFollowup}\n\n店家更新進度時會通知您。`
+          text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n總計：${order.total} 元${paymentDetails}${paymentFollowup}${trackingLink}\n\n店家更新進度時會通知您。`
         });
       } catch (error) {
         return reply(event.replyToken, { type: 'text', text: `❌ ${error.message}` });
