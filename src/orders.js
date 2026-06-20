@@ -4,6 +4,7 @@ function cleanText(value, maxLength = 200) {
 
 async function buildOrder(store, input = {}) {
   const products = await store.listProducts({ activeOnly: true });
+  const settings = await store.getSettings();
   const requested = Array.isArray(input.items) ? input.items : [];
   const items = [];
 
@@ -29,6 +30,12 @@ async function buildOrder(store, input = {}) {
   if (!customerName) throw new Error('請填寫取貨人姓名');
   if (!phone) throw new Error('請填寫聯絡電話');
   const fulfillment = ['pickup', 'delivery'].includes(input.fulfillment) ? input.fulfillment : 'pickup';
+  const enabledMethods = [];
+  if (settings.cash_enabled) enabledMethods.push('cash');
+  if (settings.bank_transfer_enabled) enabledMethods.push('bank_transfer');
+  if (!enabledMethods.length) throw new Error('店家尚未開放付款方式');
+  const paymentMethod = enabledMethods.includes(input.payment_method) ? input.payment_method : enabledMethods[0];
+  if (paymentMethod === 'bank_transfer' && !settings.bank_account) throw new Error('店家尚未設定銀行帳號');
   const total = items.reduce((sum, item) => sum + item.subtotal, 0);
 
   return {
@@ -38,6 +45,7 @@ async function buildOrder(store, input = {}) {
     fulfillment,
     pickup_time: cleanText(input.pickup_time, 60),
     note: cleanText(input.note, 300),
+    payment_method: paymentMethod,
     items,
     summary: items.map(item => `${item.name}x${item.quantity}`).join('、'),
     total

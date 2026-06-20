@@ -48,3 +48,16 @@ test('店家可以更新品牌資料與暫停接單', async () => {
   assert.equal(settings.store_name, '測試甜點店');
   assert.equal((await store.getSettings()).accepting_orders, false);
 });
+
+test('銀行轉帳可回填末五碼並確認收款', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-payment-'));
+  const store = new LocalStore(dir);
+  await store.init();
+  const order = await store.createOrder({ items: [], summary: '蛋糕x1', total: 500, payment_method: 'bank_transfer' });
+  const submitted = await store.submitTransferLast5(order.claim_code, '12345');
+  assert.equal(submitted.payment_status, 'pending');
+  assert.equal(submitted.transfer_last5, '12345');
+  const paid = await store.updatePaymentStatus(order.id, 'paid');
+  assert.equal(paid.payment_status, 'paid');
+  assert.ok(paid.paid_at);
+});

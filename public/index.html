@@ -50,6 +50,11 @@
           <label>店家介紹<textarea id="storeDescription" rows="3" maxlength="240"></textarea></label>
           <div class="two-col"><label>聯絡電話<input id="storePhone" maxlength="40"></label><label>營業時間<input id="businessHours" maxlength="180" placeholder="每日 11:00–20:00"></label></div>
           <label>店家地址<input id="storeAddress" maxlength="180"></label>
+          <h3>付款方式</h3>
+          <div class="two-col"><label class="switch"><input id="cashEnabled" type="checkbox"><span>開放現金取貨</span></label><label class="switch"><input id="bankTransferEnabled" type="checkbox"><span>開放銀行轉帳</span></label></div>
+          <div class="two-col"><label>銀行名稱<input id="bankName" maxlength="80" placeholder="例如：台灣銀行"></label><label>銀行代碼<input id="bankCode" maxlength="20" inputmode="numeric" placeholder="例如：004"></label></div>
+          <div class="two-col"><label>匯款帳號<input id="bankAccount" maxlength="60" inputmode="numeric"></label><label>戶名<input id="bankAccountName" maxlength="80"></label></div>
+          <label>付款說明<textarea id="paymentInstructions" rows="3" maxlength="300" placeholder="例如：請於三日內完成匯款"></textarea></label>
           <div class="two-col"><label>Logo 網址<input id="logoUrl" type="url" placeholder="https://..."></label><label>首頁封面網址<input id="heroImageUrl" type="url" placeholder="https://..."></label></div>
           <label class="switch"><input id="acceptingOrders" type="checkbox"><span>目前開放客戶下單</span></label>
           <p id="settingsError" class="error"></p>

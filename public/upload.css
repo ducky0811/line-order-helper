@@ -22,3 +22,4 @@ summary {
 }
 
 .settings-form { max-width: 720px; }
+.order-actions { display: grid; gap: 8px; align-content: start; }

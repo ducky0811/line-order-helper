@@ -31,7 +31,7 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
     });
     assert.equal((await store.getSettings()).merchant_line_user_id, 'Umerchant');
 
-    const order = await store.createOrder({ customer_name: '客戶', phone: '0900', items: [], summary: '蛋糕x1', total: 500 });
+    const order = await store.createOrder({ customer_name: '客戶', phone: '0900', items: [], summary: '蛋糕x1', total: 500, payment_method: 'bank_transfer' });
     await bot.notifyNewOrder(order);
     assert.equal(calls.pushes[0].to, 'Umerchant');
     assert.match(JSON.stringify(calls.pushes[0]), /確認訂單/);
@@ -53,6 +53,13 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
       postback: { data: `action=orderStatus&orderId=${order.id}&status=confirmed` }
     });
     assert.equal((await store.listOrders())[0].status, 'confirmed');
+    const submitted = await store.submitTransferLast5(order.claim_code, '54321');
+    await bot.notifyPaymentSubmitted(submitted);
+    await bot.handleEvent({
+      type: 'postback', replyToken: 'reply-payment', source: { userId: 'Umerchant' },
+      postback: { data: `action=paymentStatus&orderId=${order.id}&status=paid` }
+    });
+    assert.equal((await store.listOrders())[0].payment_status, 'paid');
   } finally {
     if (previous == null) delete process.env.MERCHANT_BIND_CODE;
     else process.env.MERCHANT_BIND_CODE = previous;

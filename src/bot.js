@@ -8,6 +8,10 @@ const STATUS_TEXT = {
   completed: '🎉 訂單已完成，謝謝您的購買',
   cancelled: '❌ 店家已取消此訂單，若有疑問請與店家聯絡'
 };
+const PAYMENT_TEXT = {
+  paid: '💰 店家已確認收到款項',
+  refunded: '↩️ 店家已將款項標記為已退款'
+};
 
 function createBot({ store, sheets, client: providedClient, config: providedConfig }) {
   const config = providedConfig || {
@@ -57,11 +61,17 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
         return reply(event.replyToken, { type: 'text', text: '您沒有管理訂單的權限。' });
       }
       const data = new URLSearchParams(event.postback.data || '');
-      if (data.get('action') !== 'orderStatus') return null;
-      const order = await store.updateOrderStatus(data.get('orderId'), data.get('status'));
-      await notifyOrderStatus(order);
+      const action = data.get('action');
+      let order;
+      if (action === 'orderStatus') {
+        order = await store.updateOrderStatus(data.get('orderId'), data.get('status'));
+        await notifyOrderStatus(order);
+      } else if (action === 'paymentStatus') {
+        order = await store.updatePaymentStatus(data.get('orderId'), data.get('status'));
+        await notifyPaymentStatus(order);
+      } else return null;
       return reply(event.replyToken, {
-        type: 'text', text: `訂單 #${order.id.slice(0, 8)} 已更新為「${STATUS_TEXT[order.status] || order.status}」`
+        type: 'text', text: action === 'paymentStatus' ? `訂單 #${order.id.slice(0, 8)} 已確認收款` : `訂單 #${order.id.slice(0, 8)} 已更新為「${STATUS_TEXT[order.status] || order.status}」`
       });
     }
 
@@ -161,6 +171,24 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
     await client.pushMessage({ to: order.line_user_id, messages: [{ type: 'text', text: `${text}\n訂單編號：${order.id.slice(0, 8)}` }] });
   }
 
+  async function notifyPaymentStatus(order) {
+    const text = PAYMENT_TEXT[order.payment_status];
+    if (!text || !order.line_user_id) return;
+    await client.pushMessage({ to: order.line_user_id, messages: [{ type: 'text', text: `${text}\n訂單編號：${order.id.slice(0, 8)}` }] });
+  }
+
+  async function notifyPaymentSubmitted(order) {
+    const settings = await store.getSettings();
+    if (!settings.merchant_line_user_id) return;
+    await client.pushMessage({
+      to: settings.merchant_line_user_id,
+      messages: [{
+        type: 'text',
+        text: `💳 客戶已回填匯款末五碼\n訂單：#${order.id.slice(0, 8)}\n末五碼：${order.transfer_last5}\n金額：NT$ ${order.total}`
+      }]
+    });
+  }
+
   async function notifyNewOrder(order) {
     const settings = await store.getSettings();
     if (!settings.merchant_line_user_id) return;
@@ -189,19 +217,24 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
             { type: 'separator', margin: 'lg' },
             { type: 'text', text: customer, margin: 'lg', weight: 'bold' },
             { type: 'text', text: details || '未填寫其他資料', color: '#73798a', size: 'sm', wrap: true, margin: 'xs' }
+            ,{ type: 'text', text: `付款：${order.payment_method === 'bank_transfer' ? '銀行轉帳' : '現金取貨'}`, color: '#73798a', size: 'sm', margin: 'xs' }
           ]},
           footer: { type: 'box', layout: 'vertical', contents: [
             statusButton('確認訂單', 'confirmed', '#2457d6'),
             statusButton('製作中', 'preparing', '#8b5cf6'),
             statusButton('可取貨', 'ready', '#e87817'),
             statusButton('完成訂單', 'completed', '#238653')
+            ,...(order.payment_method === 'bank_transfer' ? [{
+              type: 'button', style: 'secondary', height: 'sm', margin: 'sm',
+              action: { type: 'postback', label: '確認已收款', displayText: `確認收款 #${order.id.slice(0, 8)}`, data: `action=paymentStatus&orderId=${order.id}&status=paid` }
+            }] : [])
           ]}
         }
       }]
     });
   }
 
-  return { config, middleware: line.middleware(config), handleEvent, notifyOrderStatus, notifyNewOrder };
+  return { config, middleware: line.middleware(config), handleEvent, notifyOrderStatus, notifyNewOrder, notifyPaymentStatus, notifyPaymentSubmitted };
 }
 
 module.exports = { createBot };

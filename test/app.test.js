@@ -63,12 +63,30 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     const orders = await fetch(`${base}/api/admin/orders`, { headers }).then(response => response.json());
     assert.equal(orders[0].customer_name, '測試客戶');
     assert.equal(orders[0].line_user_id, 'Ucustomer');
+    await fetch(`${base}/api/admin/settings`, {
+      method: 'PUT', headers, body: JSON.stringify({ bank_transfer_enabled: true, bank_account: '1234567890' })
+    });
+    const bankOrderResponse = await fetch(`${base}/api/shop/orders`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_name: '匯款客戶', phone: '0900', payment_method: 'bank_transfer', items: [{ product_id: products[0].id, quantity: 1 }] })
+    });
+    assert.equal(bankOrderResponse.status, 201);
+    const bankOrder = await bankOrderResponse.json();
+    const paymentResponse = await fetch(`${base}/api/shop/orders/${bankOrder.claim_code}/payment`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transfer_last5: '12345' })
+    });
+    assert.equal(paymentResponse.status, 200);
+    const paidResponse = await fetch(`${base}/api/admin/orders/${bankOrder.id}/payment`, {
+      method: 'PATCH', headers, body: JSON.stringify({ payment_status: 'paid' })
+    });
+    assert.equal((await paidResponse.json()).payment_status, 'paid');
     const settingsResponse = await fetch(`${base}/api/admin/settings`, {
       method: 'PUT', headers, body: JSON.stringify({ store_name: '測試甜點店', accepting_orders: false })
     });
     assert.equal(settingsResponse.status, 200);
     const config = await fetch(`${base}/api/shop/config`).then(response => response.json());
     assert.equal(config.store_name, '測試甜點店');
+    assert.equal(config.bank_account, undefined);
     const closedOrder = await fetch(`${base}/api/shop/orders`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer_name: '客戶', phone: '0900', items: [{ product_id: products[0].id, quantity: 1 }] })

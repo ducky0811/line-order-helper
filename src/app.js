@@ -57,7 +57,7 @@ async function createApp(options = {}) {
   app.get('/api/shop/config', async (_req, res, next) => {
     try {
       const settings = await store.getSettings();
-      const { merchant_line_user_id, ...publicSettings } = settings;
+      const { merchant_line_user_id, bank_name, bank_code, bank_account, bank_account_name, payment_instructions, ...publicSettings } = settings;
       res.json({ ...publicSettings, liff_id: process.env.LIFF_ID || '' });
     } catch (error) { next(error); }
   });
@@ -84,6 +84,14 @@ async function createApp(options = {}) {
         claim_code: order.claim_code,
         line_confirm_url: createLineConfirmUrl(order, process.env.LINE_OFFICIAL_ACCOUNT_ID),
         tracking_url: `/track/?code=${encodeURIComponent(order.claim_code || '')}`
+        ,payment_method: order.payment_method,
+        payment_info: order.payment_method === 'bank_transfer' ? {
+          bank_name: settings.bank_name,
+          bank_code: settings.bank_code,
+          bank_account: settings.bank_account,
+          bank_account_name: settings.bank_account_name,
+          instructions: settings.payment_instructions
+        } : null
       });
     } catch (error) { next(error); }
   });
@@ -98,7 +106,21 @@ async function createApp(options = {}) {
         status: order.status,
         created_at: order.created_at,
         claimed: Boolean(order.line_user_id)
+        ,payment_method: order.payment_method,
+        payment_status: order.payment_status,
+        transfer_last5: order.transfer_last5 || ''
       });
+    } catch (error) { next(error); }
+  });
+  app.post('/api/shop/orders/:claimCode/payment', async (req, res, next) => {
+    try {
+      const last5 = String(req.body?.transfer_last5 || '').trim();
+      if (!/^\d{5}$/.test(last5)) throw new Error('請輸入匯款帳號末五碼');
+      const order = await store.submitTransferLast5(req.params.claimCode, last5);
+      if (bot.notifyPaymentSubmitted) {
+        await bot.notifyPaymentSubmitted(order).catch(error => console.error('❌ 店家 LINE 匯款通知失敗：', error));
+      }
+      res.json({ payment_status: order.payment_status });
     } catch (error) { next(error); }
   });
   app.post('/api/admin/login', auth.login);
@@ -133,6 +155,15 @@ async function createApp(options = {}) {
     try {
       const order = await store.updateOrderStatus(req.params.id, req.body.status);
       await bot.notifyOrderStatus(order).catch(error => console.error('❌ LINE 訂單通知失敗：', error));
+      res.json(order);
+    } catch (error) { next(error); }
+  });
+  admin.patch('/orders/:id/payment', async (req, res, next) => {
+    try {
+      const order = await store.updatePaymentStatus(req.params.id, req.body.payment_status);
+      if (bot.notifyPaymentStatus) {
+        await bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error));
+      }
       res.json(order);
     } catch (error) { next(error); }
   });

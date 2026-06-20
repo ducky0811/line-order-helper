@@ -22,6 +22,10 @@ create table if not exists public.orders (
   fulfillment text not null default 'pickup',
   pickup_time text not null default '',
   note text not null default '',
+  payment_method text not null default 'cash',
+  payment_status text not null default 'unpaid',
+  transfer_last5 text not null default '',
+  paid_at timestamptz,
   items jsonb not null default '[]'::jsonb,
   summary text not null,
   total numeric not null check (total >= 0),
@@ -42,6 +46,13 @@ create table if not exists public.store_settings (
   business_hours text not null default '',
   accepting_orders boolean not null default true,
   merchant_line_user_id text not null default '',
+  cash_enabled boolean not null default true,
+  bank_transfer_enabled boolean not null default true,
+  bank_name text not null default '',
+  bank_code text not null default '',
+  bank_account text not null default '',
+  bank_account_name text not null default '',
+  payment_instructions text not null default '',
   updated_at timestamptz not null default now()
 );
 
@@ -61,7 +72,18 @@ alter table public.orders add column if not exists pickup_time text not null def
 alter table public.orders add column if not exists note text not null default '';
 alter table public.orders add column if not exists claim_code text unique;
 alter table public.orders add column if not exists claimed_at timestamptz;
+alter table public.orders add column if not exists payment_method text not null default 'cash';
+alter table public.orders add column if not exists payment_status text not null default 'unpaid';
+alter table public.orders add column if not exists transfer_last5 text not null default '';
+alter table public.orders add column if not exists paid_at timestamptz;
 alter table public.store_settings add column if not exists merchant_line_user_id text not null default '';
+alter table public.store_settings add column if not exists cash_enabled boolean not null default true;
+alter table public.store_settings add column if not exists bank_transfer_enabled boolean not null default true;
+alter table public.store_settings add column if not exists bank_name text not null default '';
+alter table public.store_settings add column if not exists bank_code text not null default '';
+alter table public.store_settings add column if not exists bank_account text not null default '';
+alter table public.store_settings add column if not exists bank_account_name text not null default '';
+alter table public.store_settings add column if not exists payment_instructions text not null default '';
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('product-images', 'product-images', true, 2097152, array['image/jpeg','image/png','image/webp'])

@@ -19,7 +19,14 @@ const DEFAULT_SETTINGS = {
   address: '',
   business_hours: '',
   accepting_orders: true,
-  merchant_line_user_id: ''
+  merchant_line_user_id: '',
+  cash_enabled: true,
+  bank_transfer_enabled: true,
+  bank_name: '',
+  bank_code: '',
+  bank_account: '',
+  bank_account_name: '',
+  payment_instructions: ''
 };
 
 function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS) {
@@ -37,6 +44,13 @@ function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS) {
     business_hours: text(input.business_hours, existing.business_hours, 180),
     accepting_orders: input.accepting_orders == null ? existing.accepting_orders !== false : input.accepting_orders !== false,
     merchant_line_user_id: text(input.merchant_line_user_id, existing.merchant_line_user_id, 100),
+    cash_enabled: input.cash_enabled == null ? existing.cash_enabled !== false : input.cash_enabled !== false,
+    bank_transfer_enabled: input.bank_transfer_enabled == null ? existing.bank_transfer_enabled !== false : input.bank_transfer_enabled !== false,
+    bank_name: text(input.bank_name, existing.bank_name, 80),
+    bank_code: text(input.bank_code, existing.bank_code, 20),
+    bank_account: text(input.bank_account, existing.bank_account, 60),
+    bank_account_name: text(input.bank_account_name, existing.bank_account_name, 80),
+    payment_instructions: text(input.payment_instructions, existing.payment_instructions, 300),
     updated_at: new Date().toISOString()
   };
 }
@@ -143,6 +157,10 @@ class LocalStore {
       fulfillment: input.fulfillment || 'pickup',
       pickup_time: input.pickup_time || '',
       note: input.note || '',
+      payment_method: input.payment_method || 'cash',
+      payment_status: 'unpaid',
+      transfer_last5: '',
+      paid_at: null,
       items: input.items,
       summary: input.summary,
       total: Number(input.total),
@@ -182,6 +200,31 @@ class LocalStore {
     if (order.line_user_id && order.line_user_id !== lineUserId) throw new Error('這筆訂單已由其他 LINE 帳號確認');
     order.line_user_id = lineUserId;
     order.claimed_at = order.claimed_at || new Date().toISOString();
+    order.updated_at = new Date().toISOString();
+    await this.writeJson(this.ordersFile, orders);
+    return order;
+  }
+
+  async submitTransferLast5(code, last5) {
+    const orders = await this.listOrders();
+    const order = orders.find(item => item.claim_code === String(code || '').trim().toUpperCase());
+    if (!order) throw new Error('找不到這筆訂單');
+    if (order.payment_method !== 'bank_transfer') throw new Error('這筆訂單不是銀行轉帳');
+    order.transfer_last5 = String(last5 || '').trim();
+    order.payment_status = 'pending';
+    order.updated_at = new Date().toISOString();
+    await this.writeJson(this.ordersFile, orders);
+    return order;
+  }
+
+  async updatePaymentStatus(id, status) {
+    const allowed = ['unpaid', 'pending', 'paid', 'refunded'];
+    if (!allowed.includes(status)) throw new Error('付款狀態不正確');
+    const orders = await this.listOrders();
+    const order = orders.find(item => item.id === id);
+    if (!order) throw new Error('找不到訂單');
+    order.payment_status = status;
+    order.paid_at = status === 'paid' ? new Date().toISOString() : order.paid_at;
     order.updated_at = new Date().toISOString();
     await this.writeJson(this.ordersFile, orders);
     return order;
@@ -254,6 +297,7 @@ class SupabaseStore {
         claim_code: createClaimCode(), claimed_at: input.line_user_id ? new Date().toISOString() : null,
         customer_name: input.customer_name || '', phone: input.phone || '',
         fulfillment: input.fulfillment || 'pickup', pickup_time: input.pickup_time || '', note: input.note || '',
+        payment_method: input.payment_method || 'cash', payment_status: 'unpaid', transfer_last5: '', paid_at: null,
         items: input.items, summary: input.summary, total: Number(input.total), status: 'new'
       })
     });
@@ -286,6 +330,28 @@ class SupabaseStore {
       body: JSON.stringify({ line_user_id: lineUserId, claimed_at: order.claimed_at || new Date().toISOString(), updated_at: new Date().toISOString() })
     });
     return rows[0] || { ...order, line_user_id: lineUserId };
+  }
+
+  async submitTransferLast5(code, last5) {
+    const order = await this.findOrderByClaimCode(code);
+    if (!order) throw new Error('找不到這筆訂單');
+    if (order.payment_method !== 'bank_transfer') throw new Error('這筆訂單不是銀行轉帳');
+    const rows = await this.request(`orders?id=eq.${encodeURIComponent(order.id)}&merchant_id=eq.${encodeURIComponent(MERCHANT_ID)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ transfer_last5: String(last5 || '').trim(), payment_status: 'pending', updated_at: new Date().toISOString() })
+    });
+    return rows[0] || { ...order, transfer_last5: last5, payment_status: 'pending' };
+  }
+
+  async updatePaymentStatus(id, status) {
+    const allowed = ['unpaid', 'pending', 'paid', 'refunded'];
+    if (!allowed.includes(status)) throw new Error('付款狀態不正確');
+    const rows = await this.request(`orders?id=eq.${encodeURIComponent(id)}&merchant_id=eq.${encodeURIComponent(MERCHANT_ID)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ payment_status: status, paid_at: status === 'paid' ? new Date().toISOString() : null, updated_at: new Date().toISOString() })
+    });
+    if (!rows[0]) throw new Error('找不到訂單');
+    return rows[0];
   }
 
   async getSettings() {
