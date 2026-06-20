@@ -40,9 +40,15 @@ async function createApp(options = {}) {
   });
 
   app.use(express.json({ limit: '4mb' }));
-  app.use('/admin', express.static(path.join(rootDir, 'public')));
-  app.use('/shop', express.static(path.join(rootDir, 'shop')));
-  app.use('/track', express.static(path.join(rootDir, 'track')));
+  const staticOptions = {
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+      else if (filePath.endsWith('.js') || filePath.endsWith('.css')) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  };
+  app.use('/admin', express.static(path.join(rootDir, 'public'), staticOptions));
+  app.use('/shop', express.static(path.join(rootDir, 'shop'), staticOptions));
+  app.use('/track', express.static(path.join(rootDir, 'track'), staticOptions));
   app.get('/', (_req, res) => res.redirect('/admin'));
   app.get('/health', (_req, res) => res.json({ ok: true, service: 'line-order-saas' }));
   app.get('/api/shop/products', async (_req, res, next) => {

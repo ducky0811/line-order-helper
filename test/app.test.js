@@ -32,6 +32,7 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     assert.equal(page.status, 200);
     const shopPage = await fetch(`${base}/shop/`);
     assert.equal(shopPage.status, 200);
+    assert.equal(shopPage.headers.get('cache-control'), 'no-store');
     const shopProducts = await fetch(`${base}/api/shop/products`).then(response => response.json());
     const orderResponse = await fetch(`${base}/api/shop/orders`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Line-Access-Token': 'valid-line-token' },
