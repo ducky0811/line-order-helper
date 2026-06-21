@@ -1,3 +1,5 @@
+[hidden] { display: none !important; }
+
 .field-help {
   color: var(--muted);
   font-size: 12px;
