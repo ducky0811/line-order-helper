@@ -344,7 +344,7 @@ class SupabaseStore {
   }
 
   async listOrders() {
-    return this.request(`orders?merchant_id=eq.${encodeURIComponent(MERCHANT_ID)}&order=created_at.desc&limit=200`);
+    return this.request(`orders?merchant_id=eq.${encodeURIComponent(MERCHANT_ID)}&order=created_at.desc&limit=1000`);
   }
 
   async updateOrderStatus(id, status) {

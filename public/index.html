@@ -39,6 +39,10 @@
 
       <section id="ordersPanel" class="panel" hidden>
         <div class="panel-title"><div><h2>訂單</h2><p>更新狀態時會自動通知 LINE 客戶。</p></div><button id="refreshOrders" class="ghost">重新整理</button></div>
+        <div class="order-toolbar">
+          <div class="order-filters"><button type="button" class="order-filter active" data-view="active">最新訂單 <b id="activeOrderCount">0</b></button><button type="button" class="order-filter" data-view="history">歷史訂單 <b id="historyOrderCount">0</b></button></div>
+          <label class="order-search"><span>搜尋訂單</span><input id="orderSearch" type="search" placeholder="訂單編號、姓名、電話或商品"></label>
+        </div>
         <div id="orderList" class="order-list"></div>
       </section>
 
@@ -90,6 +94,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-1" defer></script>
+  <script src="/admin/app.js?v=20260621-2" defer></script>
 </body>
 </html>
