@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-2">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-3">
 </head>
 <body>
   <main class="shell">
@@ -15,15 +15,29 @@
       <h1>接單小幫手</h1>
       <p>登入後即可用手機管理商品與訂單。</p>
       <form id="loginForm">
+        <label>Email（新店家必填）<input id="loginEmail" type="email" autocomplete="email" placeholder="舊版管理者可留空"></label>
         <label>管理密碼<input id="password" type="password" autocomplete="current-password" required></label>
         <button type="submit">登入管理後台</button>
       </form>
+      <button id="showRegister" type="button" class="ghost login-secondary">第一次使用？建立免費試用商店</button>
       <p id="loginError" class="error"></p>
+    </section>
+
+    <section id="registerView" class="login-card" hidden>
+      <div class="brand-mark">店</div><h1>建立商店</h1><p>免費試用 14 天，不需信用卡。</p>
+      <form id="registerForm">
+        <label>店家名稱<input id="registerStoreName" maxlength="80" required></label>
+        <label>商店代碼<input id="registerSlug" maxlength="30" pattern="[a-z0-9-]{3,30}" placeholder="例如：my-cake-shop" required><span class="field-help">將成為您的專屬商店網址，只能使用小寫英文、數字與 -。</span></label>
+        <label>Email<input id="registerEmail" type="email" autocomplete="email" required></label>
+        <label>密碼<input id="registerPassword" type="password" minlength="8" autocomplete="new-password" required></label>
+        <button type="submit">開始免費試用</button>
+      </form>
+      <button id="showLogin" type="button" class="ghost login-secondary">返回登入</button><p id="registerError" class="error"></p>
     </section>
 
     <section id="appView" hidden>
       <header>
-        <div><span class="eyebrow">商家管理後台</span><h1>今天也順利接單</h1></div>
+        <div><span class="eyebrow">商家管理後台</span><h1>今天也順利接單</h1><p id="accountSummary" class="account-summary"></p></div>
         <button id="logoutButton" class="ghost">登出</button>
       </header>
       <nav>
@@ -101,6 +115,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-4" defer></script>
+  <script src="/admin/app.js?v=20260621-5" defer></script>
 </body>
 </html>

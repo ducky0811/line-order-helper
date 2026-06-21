@@ -20,12 +20,11 @@ function createImageService() {
   const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'product-images';
-  const merchant = String(process.env.MERCHANT_ID || 'default-store').replace(/[^a-zA-Z0-9_-]/g, '-');
-
   return {
-    async upload(dataUrl) {
+    async upload(dataUrl, merchantId = process.env.MERCHANT_ID || 'default-store') {
       if (!url || !key) throw new Error('尚未設定 Supabase 圖片儲存空間');
       const image = decodeImage(dataUrl);
+      const merchant = String(merchantId).replace(/[^a-zA-Z0-9_-]/g, '-');
       const objectPath = `${merchant}/${crypto.randomUUID()}.${image.extension}`;
       const headers = { apikey: key, 'Content-Type': image.mimeType, 'x-upsert': 'false' };
       if (key.split('.').length === 3) headers.Authorization = `Bearer ${key}`;

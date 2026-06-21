@@ -6,6 +6,7 @@ const path = require('path');
 const { createApp, createLineConfirmUrl } = require('../src/app');
 const { LocalStore } = require('../src/store');
 const { createAuth } = require('../src/auth');
+const { LocalTenantRegistry } = require('../src/tenants');
 
 test('LINE 確認連結包含官方帳號與預填訂單訊息', () => {
   const url = createLineConfirmUrl({ claim_code: 'ABC123' }, '@demo');
@@ -20,7 +21,8 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
   const bot = { middleware: (_req, _res, next) => next(), handleEvent: async () => null, notifyOrderStatus: async () => null, notifyNewOrder: async () => null };
   const sheets = { saveOrder: async () => null };
   const lineIdentity = { verify: async token => token === 'valid-line-token' ? 'Ucustomer' : null };
-  const { app } = await createApp({ store, auth, bot, sheets, lineIdentity });
+  const tenantRegistry = new LocalTenantRegistry(dir);
+  const { app } = await createApp({ store, auth, bot, sheets, lineIdentity, tenantRegistry });
   const server = app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -97,4 +99,36 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
+});
+
+test('兩間註冊店家的後台與公開商店資料互不相通', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-multi-app-'));
+  await fs.writeFile(path.join(dir, 'menu.json'), '[]');
+  const store = new LocalStore(path.join(dir, 'default'));
+  const tenantRegistry = new LocalTenantRegistry(dir);
+  const auth = createAuth({ password: 'legacy-password', secret: 'multi-test-secret' });
+  const bot = { middleware: (_req, _res, next) => next(), handleEvent: async () => null, notifyOrderStatus: async () => null, notifyNewOrder: async () => null };
+  const { app } = await createApp({ rootDir: dir, store, tenantRegistry, auth, bot, sheets: { saveOrder: async () => null }, lineIdentity: { verify: async () => null } });
+  const server = app.listen(0); await new Promise(resolve => server.once('listening', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const register = input => fetch(`${base}/api/admin/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }).then(response => response.json());
+    const a = await register({ slug: 'store-a', store_name: 'A 店', email: 'a@example.com', password: 'password123' });
+    const b = await register({ slug: 'store-b', store_name: 'B 店', email: 'b@example.com', password: 'password123' });
+    const requestAdmin = (token, pathname, options = {}) => fetch(`${base}/api/admin${pathname}`, { ...options, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...options.headers } });
+    await requestAdmin(a.token, '/products', { method: 'POST', body: JSON.stringify({ name: 'A 店蛋糕', price: 500 }) });
+    await requestAdmin(b.token, '/products', { method: 'POST', body: JSON.stringify({ name: 'B 店餅乾', price: 100 }) });
+    const productsA = await requestAdmin(a.token, '/products').then(response => response.json());
+    const productsB = await requestAdmin(b.token, '/products').then(response => response.json());
+    assert.deepEqual(productsA.map(item => item.name), ['A 店蛋糕']);
+    assert.deepEqual(productsB.map(item => item.name), ['B 店餅乾']);
+    const publicA = await fetch(`${base}/api/shop/products`, { headers: { 'X-Merchant-Slug': 'store-a' } }).then(response => response.json());
+    const publicB = await fetch(`${base}/api/shop/products`, { headers: { 'X-Merchant-Slug': 'store-b' } }).then(response => response.json());
+    assert.deepEqual(publicA.map(item => item.name), ['A 店蛋糕']);
+    assert.deepEqual(publicB.map(item => item.name), ['B 店餅乾']);
+    const orderResponse = await fetch(`${base}/api/shop/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Merchant-Slug': 'store-a' }, body: JSON.stringify({ customer_name: 'A 客戶', phone: '0900', items: [{ product_id: productsA[0].id, quantity: 1 }] }) });
+    assert.equal(orderResponse.status, 201);
+    assert.equal((await requestAdmin(a.token, '/orders').then(response => response.json())).length, 1);
+    assert.equal((await requestAdmin(b.token, '/orders').then(response => response.json())).length, 0);
+  } finally { await new Promise(resolve => server.close(resolve)); }
 });

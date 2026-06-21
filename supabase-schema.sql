@@ -11,6 +11,28 @@ create table if not exists public.products (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.merchants (
+  id text primary key,
+  slug text not null unique,
+  name text not null,
+  plan text not null default 'trial',
+  subscription_status text not null default 'trialing',
+  trial_ends_at timestamptz not null,
+  expires_at timestamptz,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.merchant_users (
+  id uuid primary key,
+  merchant_id text not null references public.merchants(id) on delete cascade,
+  email text not null unique,
+  password_hash text not null,
+  role text not null default 'owner',
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.orders (
   id uuid primary key,
   merchant_id text not null,
@@ -64,6 +86,8 @@ create index if not exists orders_merchant_idx on public.orders (merchant_id, cr
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.store_settings enable row level security;
+alter table public.merchants enable row level security;
+alter table public.merchant_users enable row level security;
 -- 後端只使用 service role key；請勿把 service role key 放進瀏覽器端。
 
 -- 若舊測試資料庫已先建立 orders，可安全重跑以下欄位升級。

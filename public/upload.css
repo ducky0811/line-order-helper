@@ -42,6 +42,9 @@ summary {
 .settings-image-preview { width: 100%; height: 170px; margin-top: 6px; border: 1px solid var(--line); border-radius: 12px; object-fit: cover; background: #edf0f6; }
 .settings-image-preview.logo { width: 120px; height: 120px; border-radius: 50%; }
 .brand-image-grid button { margin-top: 4px; }
+.login-secondary { width: 100%; margin-top: 10px; }
+.account-summary { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+.account-summary a { color: var(--blue); font-weight: 800; }
 
 .checkout-field-list, .fulfillment-option-list { display: grid; gap: 9px; }
 .checkout-field-row, .fulfillment-option-row { display: grid; grid-template-columns: minmax(170px,1fr) auto auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }

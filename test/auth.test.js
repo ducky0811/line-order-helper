@@ -4,7 +4,8 @@ const { createAuth } = require('../src/auth');
 
 test('管理登入權杖可驗證且竄改後失效', () => {
   const auth = createAuth({ password: 'demo-password', secret: 'test-secret' });
-  const token = auth.issueToken();
+  const token = auth.issueToken('store-a');
   assert.equal(auth.verifyToken(token), true);
+  assert.equal(auth.readToken(token).merchantId, 'store-a');
   assert.equal(auth.verifyToken(`${token}broken`), false);
 });
