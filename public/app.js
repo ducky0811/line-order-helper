@@ -30,7 +30,8 @@ $('#loginForm').addEventListener('submit', async event => {
   } catch(error) { $('#loginError').textContent=error.message; }
 });
 $('#logoutButton').addEventListener('click',logout);
-document.querySelectorAll('[data-show-register]').forEach(button=>button.addEventListener('click',()=>{$('#loginView').hidden=true;$('#registerView').hidden=false;window.scrollTo({top:0,behavior:'smooth'});}));
+function showRegisterView(){$('#loginView').hidden=true;$('#registerView').hidden=false;window.scrollTo({top:0,behavior:'smooth'});}
+document.addEventListener('click',event=>{if(event.target.closest('[data-show-register]'))showRegisterView();});
 $('#showLogin').addEventListener('click',()=>{$('#registerView').hidden=true;$('#loginView').hidden=false;});
 $('#registerForm').addEventListener('submit',async event=>{event.preventDefault();$('#registerError').textContent='';const button=event.submitter;button.disabled=true;try{const result=await api('/api/admin/register',{method:'POST',body:JSON.stringify({store_name:$('#registerStoreName').value,slug:$('#registerSlug').value,email:$('#registerEmail').value,password:$('#registerPassword').value})});state.token=result.token;localStorage.setItem('adminToken',result.token);showApp();toast('商店建立成功，免費試用 14 天');}catch(error){$('#registerError').textContent=error.message;}finally{button.disabled=false;}});
 

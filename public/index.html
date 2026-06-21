@@ -6,39 +6,30 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-8">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-9">
 </head>
 <body>
   <main class="shell">
     <section id="loginView" class="landing-page">
-      <nav class="landing-nav"><a class="landing-brand" href="#"><span>單</span>接單小幫手</a><div><a href="#features">功能</a><a href="#pricing">方案</a><a href="#loginCard">店家登入</a></div></nav>
+      <nav class="landing-nav"><a class="landing-brand" href="#"><span>單</span>接單小幫手</a><a href="#loginCard">店家登入</a></nav>
       <div class="landing-hero">
-        <div class="hero-copy"><span class="hero-tag">給 IG・Facebook・LINE 小店的接單工具</span><h1>別再從私訊裡<br>一張一張抄訂單</h1><p>建立自己的商品頁，讓客戶直接下單；商品、付款、取貨與訂單進度集中管理，LINE 可選擇啟用。</p><div class="hero-actions"><button type="button" data-show-register>免費試用 14 天</button><a href="#pricing">比較方案</a></div><small>不需信用卡・不用下載 App・手機就能管理</small></div>
-        <div id="loginCard" class="login-card landing-login-card">
-          <div class="brand-mark">單</div><h2>店家登入</h2><p>登入後即可管理商品與訂單。</p>
-          <form id="loginForm">
-            <label>Email（新店家必填）<input id="loginEmail" type="email" autocomplete="email" placeholder="舊版管理者可留空"></label>
-            <label>管理密碼<input id="password" type="password" autocomplete="current-password" required></label>
-            <button type="submit">登入管理後台</button>
-          </form>
-          <button id="showRegister" data-show-register type="button" class="ghost login-secondary">第一次使用？建立免費試用商店</button>
-          <p id="loginError" class="error"></p>
-        </div>
+        <div class="hero-copy"><span class="hero-tag">給社群小店的簡單接單工具</span><h1>商品放上網，<br>訂單自動整理好。</h1><p>把商店連結放在 IG、Facebook 或 LINE，客戶自己選購下單，你只要在一個後台處理。</p><div class="hero-actions"><button id="heroStartTrial" type="button" data-show-register>免費試用 14 天</button></div><small>不需信用卡・手機就能管理・LINE 可自由選用</small></div>
+        <div class="simple-flow"><span>客戶</span><b>選商品、填資料</b><i>↓</i><span>系統</span><b>自動建立並整理訂單</b><i>↓</i><span>店家</span><b>確認、製作、通知取貨</b></div>
       </div>
-      <section id="features" class="landing-section"><span class="section-kicker">能幫你做什麼</span><h2>從貼出連結，到完成訂單，一條線處理</h2><div class="feature-grid">
-        <article><b>01</b><h3>快速建立商品頁</h3><p>上傳照片、價格和庫存，商品增減立即更新，不必每次重做表單。</p></article>
-        <article><b>02</b><h3>集中整理訂單</h3><p>最新與歷史訂單分開，依狀態篩選，還能搜尋姓名、電話、商品及匯款末五碼。</p></article>
-        <article><b>03</b><h3>彈性設定結帳</h3><p>自己決定取貨、付款與客戶必填欄位，支援現金及銀行轉帳。</p></article>
-        <article><b>04</b><h3>需要時再連 LINE</h3><p>LINE 不是下單門檻；啟用後可確認客戶身分、通知新訂單與更新進度。</p></article>
+      <section id="features" class="landing-section compact-section"><span class="section-kicker">三件事，一次解決</span><div class="feature-grid">
+        <article><b>01</b><h3>商品隨時更新</h3><p>自己上架、改價、調整庫存，不必重做訂購表單。</p></article>
+        <article><b>02</b><h3>訂單不再漏掉</h3><p>訂單、付款末五碼與處理進度，全部集中搜尋管理。</p></article>
+        <article><b>03</b><h3>LINE 需要再開</h3><p>外部網站可直接下單；專業版再加上 LINE 與試算表通知。</p></article>
       </div></section>
-      <section class="landing-section value-section"><div><span class="section-kicker">我們不一樣的地方</span><h2>不是另一個連結頁，也不是笨重的大型商城</h2></div><div class="value-list">
-        <p><b>比 Google 表單／私訊更省工：</b>自動計算金額、產生訂單、追蹤付款和處理進度。</p><p><b>比 Linktree 類工具更完整：</b>不只導向連結，而是真的完成選購、下單與店家接單。</p><p><b>比大型開店平台更輕巧：</b>聚焦小店、預購、甜點與工作室，不必先學金流、物流和複雜後台。</p><p><b>不綁死 LINE：</b>商店網址可放在 IG、Facebook 或任何網站；想用 LINE 通知時再連接自己的官方帳號。</p>
-      </div></section>
-      <section id="pricing" class="landing-section pricing-section"><span class="section-kicker">簡單透明的方案</span><h2>先免費試用，再選適合的方案</h2><p class="pricing-intro">免費試用 14 天可體驗完整流程，不需信用卡。</p><div class="pricing-grid">
-        <article class="price-card"><h3>基本版</h3><div class="plan-price"><b>NT$499</b><span>／月</span></div><p>適合從 IG、Facebook 導流，想擺脫私訊抄單的小店。</p><ul><li>專屬線上商品頁</li><li>商品、庫存與停售管理</li><li>訂單狀態、搜尋與歷史訂單</li><li>自訂取貨、付款與訂購欄位</li><li>銀行轉帳末五碼核對</li><li>訂單資料保存 12 個月</li></ul><button type="button" class="ghost" data-show-register>開始免費試用</button></article>
-        <article class="price-card recommended"><span class="popular">最完整</span><h3>專業版</h3><div class="plan-price"><b>NT$999</b><span>／月</span></div><p>適合希望自動通知客戶，並保留試算表備份的店家。</p><ul><li>包含基本版全部功能</li><li>連接自己的 LINE 官方帳號</li><li>客戶確認、新訂單與進度通知</li><li>每店獨立 Google 試算表同步</li><li>不需提供 Google 密碼或金鑰</li><li>訂單資料保存 3 年</li></ul><button type="button" data-show-register>開始免費試用</button></article>
-      </div><div class="pricing-note">試用或付費方案到期後停止接新訂單，訂單資料保留 30 天供店家處理與匯出，之後刪除。方案費用不含 LINE 官方帳號本身可能產生的訊息費用。目前提供現金與銀行轉帳；線上刷卡、電子發票及物流串接不在現有功能內。</div></section>
-      <section class="landing-cta"><h2>讓接單回到做生意，不再整理聊天室</h2><p>14 天免費試用，先用自己的商品完整走一次流程。</p><button type="button" data-show-register>建立免費試用商店</button></section>
+      <section id="pricing" class="landing-section pricing-section compact-pricing"><span class="section-kicker">兩種方案</span><h2>依照需要，簡單選擇</h2><div class="pricing-grid">
+        <article class="price-card"><h3>基本版</h3><div class="plan-price"><b>NT$499</b><span>／月</span></div><p>商品頁、訂單與付款管理，資料保存 12 個月。</p></article>
+        <article class="price-card recommended"><span class="popular">推薦</span><h3>專業版</h3><div class="plan-price"><b>NT$999</b><span>／月</span></div><p>基本版全部功能，加上 LINE 自動通知、Google 試算表同步，資料保存 3 年。</p></article>
+      </div><details class="plan-details"><summary>查看完整方案與注意事項</summary><div><p><b>基本版：</b>商品、庫存、訂單狀態、搜尋、自訂取貨付款與匯款末五碼。</p><p><b>專業版：</b>再加上自己的 LINE 官方帳號通知及每店獨立 Google 試算表同步。</p><p>到期後停止接單並保留資料 30 天。LINE 訊息費另計；目前不含刷卡、電子發票及物流串接。</p></div></details></section>
+      <section id="loginCard" class="login-card bottom-login-card">
+        <div class="brand-mark">單</div><h2>店家登入</h2><p>已經有商店？從這裡進入管理後台。</p>
+        <form id="loginForm"><label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="舊版管理者可留空"></label><label>管理密碼<input id="password" type="password" autocomplete="current-password" required></label><button type="submit">登入管理後台</button></form>
+        <button id="showRegister" data-show-register type="button" class="ghost login-secondary">還沒有商店？免費試用 14 天</button><p id="loginError" class="error"></p>
+      </section>
       <footer class="landing-footer">接單小幫手｜為社群小店打造的簡單接單系統</footer>
     </section>
 
@@ -197,6 +188,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-10" defer></script>
+  <script src="/admin/app.js?v=20260621-11" defer></script>
 </body>
 </html>
