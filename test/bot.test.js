@@ -21,7 +21,7 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
     store,
     sheets: { saveOrder: async () => null },
     client,
-    config: { channelAccessToken: 'test-token', channelSecret: 'test-secret', publicBaseUrl: 'https://shop.example.com' }
+    config: { channelAccessToken: 'test-token', channelSecret: 'test-secret', merchantSlug: 'store-a', publicBaseUrl: 'https://shop.example.com' }
   });
 
   try {
@@ -44,6 +44,7 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
     assert.equal((await store.listOrders())[0].line_user_id, 'Ucustomer');
     assert.match(JSON.stringify(calls.replies.at(-1)), /帳號：987654321/);
     assert.match(JSON.stringify(calls.replies.at(-1)), /shop\.example\.com\/track/);
+    assert.match(JSON.stringify(calls.replies.at(-1)), /store=store-a/);
 
     await bot.handleEvent({
       type: 'postback', replyToken: 'reply-intruder', source: { userId: 'Uother' },

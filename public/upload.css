@@ -45,6 +45,9 @@ summary {
 .login-secondary { width: 100%; margin-top: 10px; }
 .account-summary { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
 .account-summary a { color: var(--blue); font-weight: 800; }
+.line-settings { margin: 24px 0; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: #f8faff; }
+.line-settings h3 { margin-top: 0; }
+.notice { margin: 12px 0; padding: 12px; border-radius: 10px; background: #fff6df; color: #7b5a13; font-size: 13px; }
 
 .checkout-field-list, .fulfillment-option-list { display: grid; gap: 9px; }
 .checkout-field-row, .fulfillment-option-row { display: grid; grid-template-columns: minmax(170px,1fr) auto auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 13px; background: #fff; }

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-3">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-4">
 </head>
 <body>
   <main class="shell">
@@ -25,10 +25,10 @@
 
     <section id="registerView" class="login-card" hidden>
       <div class="brand-mark">店</div><h1>建立商店</h1><p>免費試用 14 天，不需信用卡。</p>
-      <form id="registerForm">
-        <label>店家名稱<input id="registerStoreName" maxlength="80" required></label>
-        <label>商店代碼<input id="registerSlug" maxlength="30" pattern="[a-z0-9-]{3,30}" placeholder="例如：my-cake-shop" required><span class="field-help">將成為您的專屬商店網址，只能使用小寫英文、數字與 -。</span></label>
-        <label>Email<input id="registerEmail" type="email" autocomplete="email" required></label>
+      <form id="registerForm" autocomplete="off">
+        <label>店家名稱<input id="registerStoreName" name="new_store_name" maxlength="80" autocomplete="off" required></label>
+        <label>商店代碼<input id="registerSlug" name="new_store_slug" maxlength="30" pattern="[a-z0-9-]{3,30}" autocomplete="off" placeholder="例如：my-cake-shop" required><span class="field-help">將成為您的專屬商店網址，只能使用小寫英文、數字與 -。</span></label>
+        <label>Email<input id="registerEmail" name="new_store_email" type="email" autocomplete="off" required></label>
         <label>密碼<input id="registerPassword" type="password" minlength="8" autocomplete="new-password" required></label>
         <button type="submit">開始免費試用</button>
       </form>
@@ -91,6 +91,20 @@
             <label>線上訂購封面圖<input id="heroImageFile" type="file" accept="image/jpeg,image/png,image/webp"><span class="field-help">未上傳時會使用系統預設圖片。</span><img id="heroImagePreview" class="settings-image-preview hero-preview" alt="封面圖預覽" hidden><button id="useDefaultHero" type="button" class="ghost" hidden>改用預設封面</button></label>
           </div>
           <details><summary>進階：使用圖片網址</summary><div class="two-col"><label>Logo 網址<input id="logoUrl" type="url" placeholder="https://..."></label><label>首頁封面網址<input id="heroImageUrl" type="url" placeholder="https://..."></label></div></details>
+          <section class="line-settings">
+            <h3>LINE 官方帳號連接</h3><p class="field-help">只有啟用並完成連接的店家，客戶才會看到 LINE 訂單確認，店家與客戶也才會收到 LINE 通知。</p>
+            <div id="legacyLineNotice" class="notice" hidden>這是既有商店，LINE 憑證目前由 Zeabur 環境變數管理。</div>
+            <div id="tenantLineSettings">
+              <label class="switch"><input id="lineEnabled" type="checkbox"><span>啟用 LINE 訂單確認與通知</span></label>
+              <label>LINE 官方帳號 ID<input id="lineOfficialAccountId" maxlength="80" placeholder="例如：@abc1234"></label>
+              <label>Channel Access Token<input id="lineChannelAccessToken" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
+              <label>Channel Secret<input id="lineChannelSecret" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
+              <label>Webhook 網址<input id="lineWebhookUrl" readonly></label>
+              <label>店家綁定指令<input id="lineBindCommand" readonly></label>
+              <p class="field-help">儲存後，將 Webhook 網址填入 LINE Developers；再從店家 LINE 傳送綁定指令。</p>
+              <button id="saveLineIntegration" type="button">儲存 LINE 設定</button><p id="lineIntegrationError" class="error"></p>
+            </div>
+          </section>
           <label class="switch"><input id="acceptingOrders" type="checkbox"><span>目前開放客戶下單</span></label>
           <p id="settingsError" class="error"></p>
           <button type="submit">儲存店家設定</button>
@@ -115,6 +129,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-6" defer></script>
+  <script src="/admin/app.js?v=20260621-7" defer></script>
 </body>
 </html>

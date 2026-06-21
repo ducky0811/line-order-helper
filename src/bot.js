@@ -23,6 +23,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
   }
   const client = providedClient || new line.messagingApi.MessagingApiClient({ channelAccessToken: config.channelAccessToken });
   const publicBaseUrl = String(providedConfig?.publicBaseUrl || process.env.PUBLIC_BASE_URL || process.env.APP_BASE_URL || '').trim().replace(/\/$/, '');
+  const merchantSlug = String(providedConfig?.merchantSlug || '').trim();
   const carts = new Map();
 
   async function reply(replyToken, messages) {
@@ -79,7 +80,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
     if (event.type !== 'message' || event.message.type !== 'text') return null;
     const text = event.message.text.trim();
     if (text.startsWith('綁定店家 ')) {
-      const bindCode = process.env.MERCHANT_BIND_CODE;
+      const bindCode = providedConfig?.merchantBindCode || process.env.MERCHANT_BIND_CODE;
       const provided = text.slice(5).trim();
       if (!bindCode || !safeEqual(provided, bindCode)) {
         return reply(event.replyToken, { type: 'text', text: '綁定碼不正確，請回管理後台確認。' });
@@ -96,7 +97,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
           ? `\n\n🏦 匯款資料\n${settings.bank_name || ''}${settings.bank_code ? `（${settings.bank_code}）` : ''}\n帳號：${settings.bank_account || ''}\n戶名：${settings.bank_account_name || ''}${settings.payment_instructions ? `\n${settings.payment_instructions}` : ''}`
           : '\n\n付款方式：現金取貨';
         const paymentFollowup = order.payment_method === 'bank_transfer' ? '\n完成匯款後，請到訂單進度頁回填帳號末五碼。' : '';
-        const trackingLink = publicBaseUrl ? `\n\n查看訂單／回填末五碼：\n${publicBaseUrl}/track/?code=${encodeURIComponent(order.claim_code || claimCode)}` : '';
+        const trackingLink = publicBaseUrl ? `\n\n查看訂單／回填末五碼：\n${publicBaseUrl}/track/?${merchantSlug?`store=${encodeURIComponent(merchantSlug)}&`:''}code=${encodeURIComponent(order.claim_code || claimCode)}` : '';
         return reply(event.replyToken, {
           type: 'text',
           text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n總計：${order.total} 元${paymentDetails}${paymentFollowup}${trackingLink}\n\n店家更新進度時會通知您。`
@@ -241,7 +242,8 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
     });
   }
 
-  return { config, middleware: line.middleware(config), handleEvent, notifyOrderStatus, notifyNewOrder, notifyPaymentStatus, notifyPaymentSubmitted };
+  async function verifyConnection() { if (typeof client.getBotInfo !== 'function') return true; return client.getBotInfo(); }
+  return { config, middleware: line.middleware(config), handleEvent, notifyOrderStatus, notifyNewOrder, notifyPaymentStatus, notifyPaymentSubmitted, verifyConnection };
 }
 
 module.exports = { createBot };

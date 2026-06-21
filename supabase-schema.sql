@@ -33,6 +33,16 @@ create table if not exists public.merchant_users (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.merchant_line_integrations (
+  merchant_id text primary key references public.merchants(id) on delete cascade,
+  enabled boolean not null default false,
+  official_account_id text not null default '',
+  channel_access_token_encrypted text not null default '',
+  channel_secret_encrypted text not null default '',
+  bind_code text not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.orders (
   id uuid primary key,
   merchant_id text not null,
@@ -88,6 +98,7 @@ alter table public.orders enable row level security;
 alter table public.store_settings enable row level security;
 alter table public.merchants enable row level security;
 alter table public.merchant_users enable row level security;
+alter table public.merchant_line_integrations enable row level security;
 -- 後端只使用 service role key；請勿把 service role key 放進瀏覽器端。
 
 -- 若舊測試資料庫已先建立 orders，可安全重跑以下欄位升級。

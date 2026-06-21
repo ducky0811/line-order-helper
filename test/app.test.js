@@ -7,6 +7,7 @@ const { createApp, createLineConfirmUrl } = require('../src/app');
 const { LocalStore } = require('../src/store');
 const { createAuth } = require('../src/auth');
 const { LocalTenantRegistry } = require('../src/tenants');
+const { LocalLineIntegrationStore } = require('../src/line-integrations');
 
 test('LINE 確認連結包含官方帳號與預填訂單訊息', () => {
   const url = createLineConfirmUrl({ claim_code: 'ABC123' }, '@demo');
@@ -22,7 +23,8 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
   const sheets = { saveOrder: async () => null };
   const lineIdentity = { verify: async token => token === 'valid-line-token' ? 'Ucustomer' : null };
   const tenantRegistry = new LocalTenantRegistry(dir);
-  const { app } = await createApp({ store, auth, bot, sheets, lineIdentity, tenantRegistry });
+  const lineIntegrations = new LocalLineIntegrationStore(dir);
+  const { app } = await createApp({ store, auth, bot, sheets, lineIdentity, tenantRegistry, lineIntegrations });
   const server = app.listen(0);
   await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -106,9 +108,10 @@ test('兩間註冊店家的後台與公開商店資料互不相通', async () =>
   await fs.writeFile(path.join(dir, 'menu.json'), '[]');
   const store = new LocalStore(path.join(dir, 'default'));
   const tenantRegistry = new LocalTenantRegistry(dir);
+  const lineIntegrations = new LocalLineIntegrationStore(dir);
   const auth = createAuth({ password: 'legacy-password', secret: 'multi-test-secret' });
   const bot = { middleware: (_req, _res, next) => next(), handleEvent: async () => null, notifyOrderStatus: async () => null, notifyNewOrder: async () => null };
-  const { app } = await createApp({ rootDir: dir, store, tenantRegistry, auth, bot, sheets: { saveOrder: async () => null }, lineIdentity: { verify: async () => null } });
+  const { app } = await createApp({ rootDir: dir, store, tenantRegistry, lineIntegrations, auth, bot, sheets: { saveOrder: async () => null }, lineIdentity: { verify: async () => null } });
   const server = app.listen(0); await new Promise(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   try {

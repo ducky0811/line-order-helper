@@ -9,6 +9,7 @@ const { buildOrder } = require('./orders');
 const { createImageService } = require('./images');
 const { createLineIdentityService } = require('./line-identity');
 const { createTenantRegistry, normalizeSlug, canAcceptOrders } = require('./tenants');
+const { createLineIntegrationStore, publicIntegration, credentials } = require('./line-integrations');
 
 function createLineConfirmUrl(order, rawId) {
   const officialId = String(rawId || '').trim().replace(/[^@a-zA-Z0-9._-]/g, '');
@@ -45,6 +46,22 @@ async function createApp(options = {}) {
   const auth = options.auth || createAuth();
   const images = options.images || createImageService();
   const lineIdentity = options.lineIdentity || createLineIdentityService();
+  const lineIntegrations = options.lineIntegrations || createLineIntegrationStore(rootDir);
+  await lineIntegrations.init();
+  const tenantBots = new Map();
+  async function getTenantBot(merchantId, refresh = false) {
+    const row = await lineIntegrations.get(merchantId);
+    const config = credentials(row);
+    if (!config) return null;
+    const cached = tenantBots.get(merchantId);
+    if (!refresh && cached?.updatedAt === row.updated_at) return cached;
+    const tenantStore = await getStore(merchantId);
+    const tenantBot = createBot({ store: tenantStore, sheets: { saveOrder: async () => null }, config: { ...config, merchantSlug: merchantId, publicBaseUrl: process.env.PUBLIC_BASE_URL || '' } });
+    const result = { bot: tenantBot, row, config, updatedAt: row.updated_at };
+    tenantBots.set(merchantId, result);
+    return result;
+  }
+  async function getTenantBotSafe(merchantId) { try { return await getTenantBot(merchantId); } catch (error) { console.error(`❌ 店家 ${merchantId} LINE 連接失敗：`, error.message); return null; } }
 
 
   app.post('/webhook', bot.middleware, async (req, res) => {
@@ -55,6 +72,18 @@ async function createApp(options = {}) {
       console.error('❌ LINE Webhook 處理失敗：', error);
       res.status(500).end();
     }
+  });
+  app.post('/webhook/:slug', async (req, res, next) => {
+    try {
+      const merchant = await tenantRegistry.findBySlug(req.params.slug);
+      if (!merchant) return res.status(404).end();
+      const connected = await getTenantBot(merchant.id);
+      if (!connected) return res.status(404).end();
+      connected.bot.middleware(req, res, async error => {
+        if (error) return next(error);
+        try { res.json(await Promise.all((req.body.events || []).map(connected.bot.handleEvent))); } catch (reason) { next(reason); }
+      });
+    } catch (error) { next(error); }
   });
 
   app.use(express.json({ limit: '4mb' }));
@@ -91,7 +120,8 @@ async function createApp(options = {}) {
       const settings = await req.store.getSettings();
       const { merchant_line_user_id, bank_name, bank_code, bank_account, bank_account_name, payment_instructions, ...publicSettings } = settings;
       const subscriptionOpen = req.merchant ? canAcceptOrders(req.merchant) : true;
-      res.json({ ...publicSettings, accepting_orders: publicSettings.accepting_orders !== false && subscriptionOpen, merchant_slug: req.merchant?.slug || DEFAULT_MERCHANT_ID, plan: req.merchant?.plan || 'legacy', subscription_status: req.merchant?.subscription_status || 'active', accepting_subscription_orders: subscriptionOpen, platform_branding: req.merchant?.plan !== 'pro', platform_sales_url: getPlatformSalesUrl(), liff_id: req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LIFF_ID || '' : '' });
+      const tenantLine = req.merchant ? publicIntegration(await lineIntegrations.get(req.merchantId), process.env.PUBLIC_BASE_URL || '') : null;
+      res.json({ ...publicSettings, accepting_orders: publicSettings.accepting_orders !== false && subscriptionOpen, merchant_slug: req.merchant?.slug || DEFAULT_MERCHANT_ID, plan: req.merchant?.plan || 'legacy', subscription_status: req.merchant?.subscription_status || 'active', accepting_subscription_orders: subscriptionOpen, platform_branding: req.merchant?.plan !== 'pro', platform_sales_url: getPlatformSalesUrl(), line_enabled: req.merchant ? tenantLine.enabled && tenantLine.configured : Boolean(process.env.LINE_OFFICIAL_ACCOUNT_ID), liff_id: req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LIFF_ID || '' : '' });
     } catch (error) { next(error); }
   });
   app.post('/api/shop/orders', async (req, res, next) => {
@@ -110,16 +140,17 @@ async function createApp(options = {}) {
       const input = await buildOrder(req.store, { ...req.body, line_user_id: lineUserId });
       const order = await req.store.createOrder(input);
       const time = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+      let tenantLine = null;
       if (req.merchantId === DEFAULT_MERCHANT_ID) {
         await sheets.saveOrder({ time, summary: input.summary, total: input.total }).catch(error => console.error('❌ 寫入 Google Sheets 失敗：', error));
         await bot.notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error));
-      }
+      } else { tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine) await tenantLine.bot.notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error)); }
       res.status(201).json({
         id: order.id,
         total: order.total,
         status: order.status,
         claim_code: order.claim_code,
-        line_confirm_url: req.merchantId === DEFAULT_MERCHANT_ID ? createLineConfirmUrl(order, process.env.LINE_OFFICIAL_ACCOUNT_ID) : '',
+        line_confirm_url: createLineConfirmUrl(order, req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LINE_OFFICIAL_ACCOUNT_ID : tenantLine?.config.officialAccountId),
         tracking_url: `/track/?store=${encodeURIComponent(req.merchant?.slug || DEFAULT_MERCHANT_ID)}&code=${encodeURIComponent(order.claim_code || '')}`
         ,payment_method: order.payment_method,
         payment_info: order.payment_method === 'bank_transfer' ? {
@@ -154,9 +185,8 @@ async function createApp(options = {}) {
       const last5 = String(req.body?.transfer_last5 || '').trim();
       if (!/^\d{5}$/.test(last5)) throw new Error('請輸入匯款帳號末五碼');
       const order = await req.store.submitTransferLast5(req.params.claimCode, last5);
-      if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyPaymentSubmitted) {
-        await bot.notifyPaymentSubmitted(order).catch(error => console.error('❌ 店家 LINE 匯款通知失敗：', error));
-      }
+      if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyPaymentSubmitted) await bot.notifyPaymentSubmitted(order).catch(error => console.error('❌ 店家 LINE 匯款通知失敗：', error));
+      else if (req.merchantId !== DEFAULT_MERCHANT_ID) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyPaymentSubmitted) await tenantLine.bot.notifyPaymentSubmitted(order).catch(error => console.error('❌ 店家 LINE 匯款通知失敗：', error)); }
       res.json({ payment_status: order.payment_status });
     } catch (error) { next(error); }
   });
@@ -181,6 +211,8 @@ async function createApp(options = {}) {
   admin.use(auth.requireAdmin);
   admin.use(async (req, _res, next) => { try { req.store = await getStore(req.merchantId); req.merchant = req.merchantId === DEFAULT_MERCHANT_ID ? null : await tenantRegistry.findById(req.merchantId); next(); } catch (error) { next(error); } });
   admin.get('/account', async (req, res) => res.json({ merchant_id: req.merchantId, merchant: req.merchant, shop_url: req.merchant ? `/shop/${req.merchant.slug}/` : '/shop/', can_accept_orders: req.merchant ? canAcceptOrders(req.merchant) : true }));
+  admin.get('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.json({ legacy: true, enabled: Boolean(process.env.CHANNEL_ACCESS_TOKEN), configured: Boolean(process.env.CHANNEL_ACCESS_TOKEN && process.env.CHANNEL_SECRET), official_account_id: process.env.LINE_OFFICIAL_ACCOUNT_ID || '', webhook_url: `${String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')}/webhook` }); res.json(publicIntegration(await lineIntegrations.get(req.merchantId), process.env.PUBLIC_BASE_URL || '')); } catch (error) { next(error); } });
+  admin.put('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 LINE 環境變數' }); const row = await lineIntegrations.save(req.merchantId, req.body || {}); tenantBots.delete(req.merchantId); if (row.enabled) { try { const connected = await getTenantBot(req.merchantId, true); await connected.bot.verifyConnection(); } catch (reason) { await lineIntegrations.save(req.merchantId, { enabled: false }); tenantBots.delete(req.merchantId); const error = new Error('LINE Channel Access Token 驗證失敗，已保持停用，請檢查後重試'); error.status = 400; throw error; } } res.json(publicIntegration(row, process.env.PUBLIC_BASE_URL || '')); } catch (error) { next(error); } });
   admin.get('/products', async (req, res, next) => {
     try { res.json(await req.store.listProducts()); } catch (error) { next(error); }
   });
@@ -209,6 +241,7 @@ async function createApp(options = {}) {
     try {
       const order = await req.store.updateOrderStatus(req.params.id, req.body.status);
       if (req.merchantId === DEFAULT_MERCHANT_ID) await bot.notifyOrderStatus(order).catch(error => console.error('❌ LINE 訂單通知失敗：', error));
+      else { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine) await tenantLine.bot.notifyOrderStatus(order).catch(error => console.error('❌ LINE 訂單通知失敗：', error)); }
       res.json(order);
     } catch (error) { next(error); }
   });
@@ -217,7 +250,7 @@ async function createApp(options = {}) {
       const order = await req.store.updatePaymentStatus(req.params.id, req.body.payment_status);
       if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyPaymentStatus) {
         await bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error));
-      }
+      } else if (req.merchantId !== DEFAULT_MERCHANT_ID) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyPaymentStatus) await tenantLine.bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error)); }
       res.json(order);
     } catch (error) { next(error); }
   });
@@ -228,7 +261,7 @@ async function createApp(options = {}) {
     if (status >= 500) console.error(error);
     res.status(status).json({ error: error.message || '操作失敗' });
   });
-  return { app, store, bot, tenantRegistry, getStore };
+  return { app, store, bot, tenantRegistry, getStore, lineIntegrations, getTenantBot };
 }
 
 module.exports = { createApp, createLineConfirmUrl };
