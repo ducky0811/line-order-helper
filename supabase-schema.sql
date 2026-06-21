@@ -119,3 +119,6 @@ on conflict (id) do update set
   public = true,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
+
+-- 通知 Supabase REST API 立即重新讀取最新資料表結構。
+notify pgrst, 'reload schema';
