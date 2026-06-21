@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-4">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-5">
 </head>
 <body>
   <main class="shell">
@@ -94,15 +94,43 @@
           <section class="line-settings">
             <h3>LINE 官方帳號連接</h3><p class="field-help">只有啟用並完成連接的店家，客戶才會看到 LINE 訂單確認，店家與客戶也才會收到 LINE 通知。</p>
             <div id="legacyLineNotice" class="notice" hidden>這是既有商店，LINE 憑證目前由 Zeabur 環境變數管理。</div>
-            <div id="tenantLineSettings">
-              <label class="switch"><input id="lineEnabled" type="checkbox"><span>啟用 LINE 訂單確認與通知</span></label>
-              <label>LINE 官方帳號 ID<input id="lineOfficialAccountId" maxlength="80" placeholder="例如：@abc1234"></label>
-              <label>Channel Access Token<input id="lineChannelAccessToken" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
-              <label>Channel Secret<input id="lineChannelSecret" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
-              <label>Webhook 網址<input id="lineWebhookUrl" readonly></label>
-              <label>店家綁定指令<input id="lineBindCommand" readonly></label>
-              <p class="field-help">儲存後，將 Webhook 網址填入 LINE Developers；再從店家 LINE 傳送綁定指令。</p>
-              <button id="saveLineIntegration" type="button">儲存 LINE 設定</button><p id="lineIntegrationError" class="error"></p>
+            <div id="tenantLineSettings" class="line-wizard">
+              <div class="line-wizard-progress" aria-label="LINE 設定進度">
+                <button type="button" data-line-go="1"><b>1</b><span>官方帳號</span></button>
+                <button type="button" data-line-go="2"><b>2</b><span>連線驗證</span></button>
+                <button type="button" data-line-go="3"><b>3</b><span>Webhook</span></button>
+                <button type="button" data-line-go="4"><b>4</b><span>綁定店家</span></button>
+              </div>
+              <div id="lineConnectionComplete" class="line-complete" hidden>✓ LINE 已連接並完成店家綁定</div>
+
+              <section class="line-step-card" data-line-step="1">
+                <div class="line-step-title"><b>步驟 1</b><div><h4>準備 LINE 官方帳號</h4><p>請使用店家自己的官方帳號，通知才會以店家的名義送出。</p></div></div>
+                <label>LINE 官方帳號 ID<input id="lineOfficialAccountId" maxlength="80" placeholder="例如：@abc1234"></label>
+                <p class="field-help">可在 LINE Official Account Manager 的帳號設定中找到，必須以 @ 開頭。</p>
+                <div class="line-step-actions"><a class="button-link ghost" href="https://manager.line.biz/" target="_blank" rel="noopener">開啟官方帳號管理</a><button id="lineStep1Next" type="button">下一步</button></div>
+              </section>
+
+              <section class="line-step-card" data-line-step="2" hidden>
+                <div class="line-step-title"><b>步驟 2</b><div><h4>填入兩組連線金鑰</h4><p>從 LINE Developers 的 Messaging API 頻道複製；系統會加密保存並立即驗證。</p></div></div>
+                <label>Channel Access Token<input id="lineChannelAccessToken" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
+                <label>Channel Secret<input id="lineChannelSecret" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
+                <div class="line-step-actions"><button type="button" class="ghost" data-line-back="1">上一步</button><button id="saveLineIntegration" type="button">儲存並驗證連線</button></div>
+              </section>
+
+              <section class="line-step-card" data-line-step="3" hidden>
+                <div class="line-step-title"><b>步驟 3</b><div><h4>設定 Webhook</h4><p>複製網址到 LINE Developers → Messaging API → Webhook URL，開啟 Use webhook 後按 Verify。</p></div></div>
+                <label>Webhook 網址<div class="copy-field"><input id="lineWebhookUrl" readonly><button id="copyLineWebhook" type="button" class="ghost">複製</button></div></label>
+                <div class="line-step-actions"><button type="button" class="ghost" data-line-back="2">上一步</button><button id="lineStep3Next" type="button">我已完成 Webhook</button></div>
+              </section>
+
+              <section class="line-step-card" data-line-step="4" hidden>
+                <div class="line-step-title"><b>步驟 4</b><div><h4>綁定接單的店家 LINE</h4><p>用店家平常收單的 LINE 加入官方帳號，傳送下面這句指令。</p></div></div>
+                <label>店家綁定指令<div class="copy-field"><input id="lineBindCommand" readonly><button id="copyLineBindCommand" type="button" class="ghost">複製</button></div></label>
+                <div id="lineBindingStatus" class="line-binding-status">尚未偵測到綁定</div>
+                <div class="line-step-actions"><button type="button" class="ghost" data-line-back="3">上一步</button><button id="checkLineBinding" type="button">檢查綁定狀態</button></div>
+              </section>
+              <div id="lineEnabledActions" class="line-enabled-actions" hidden><button id="disableLineIntegration" type="button" class="danger">停用 LINE 功能</button></div>
+              <p id="lineIntegrationError" class="error"></p>
             </div>
           </section>
           <label class="switch"><input id="acceptingOrders" type="checkbox"><span>目前開放客戶下單</span></label>
@@ -129,6 +157,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-7" defer></script>
+  <script src="/admin/app.js?v=20260621-8" defer></script>
 </body>
 </html>
