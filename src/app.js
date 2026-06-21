@@ -17,6 +17,11 @@ function createLineConfirmUrl(order, rawId) {
   return `https://line.me/R/oaMessage/${encodeURIComponent(officialId)}/?${message}`;
 }
 
+function getPlatformSalesUrl() {
+  const value = String(process.env.PLATFORM_SALES_URL || '/admin/').trim();
+  return value.startsWith('/') || /^https:\/\//i.test(value) ? value : '/admin/';
+}
+
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
   const app = express();
@@ -84,7 +89,7 @@ async function createApp(options = {}) {
       const settings = await req.store.getSettings();
       const { merchant_line_user_id, bank_name, bank_code, bank_account, bank_account_name, payment_instructions, ...publicSettings } = settings;
       const subscriptionOpen = req.merchant ? canAcceptOrders(req.merchant) : true;
-      res.json({ ...publicSettings, accepting_orders: publicSettings.accepting_orders !== false && subscriptionOpen, merchant_slug: req.merchant?.slug || DEFAULT_MERCHANT_ID, plan: req.merchant?.plan || 'legacy', subscription_status: req.merchant?.subscription_status || 'active', accepting_subscription_orders: subscriptionOpen, platform_branding: req.merchant?.plan !== 'pro', liff_id: req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LIFF_ID || '' : '' });
+      res.json({ ...publicSettings, accepting_orders: publicSettings.accepting_orders !== false && subscriptionOpen, merchant_slug: req.merchant?.slug || DEFAULT_MERCHANT_ID, plan: req.merchant?.plan || 'legacy', subscription_status: req.merchant?.subscription_status || 'active', accepting_subscription_orders: subscriptionOpen, platform_branding: req.merchant?.plan !== 'pro', platform_sales_url: getPlatformSalesUrl(), liff_id: req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LIFF_ID || '' : '' });
     } catch (error) { next(error); }
   });
   app.post('/api/shop/orders', async (req, res, next) => {
