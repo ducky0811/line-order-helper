@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-9">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-10">
 </head>
 <body>
   <main class="shell">
@@ -155,12 +155,10 @@
             <div id="legacySheetsNotice" class="notice" hidden>這是既有商店，Google Sheets 目前由 Zeabur 環境變數管理。</div>
             <div id="sheetsPlanLock" class="plan-lock" hidden><b>專業版功能</b><span>升級專業版即可將新訂單即時備份到自己的 Google 試算表。</span></div>
             <div id="tenantSheetsSettings">
-              <div class="sheet-setup-steps"><p><b>1</b>建立 Google 試算表，新增名為「訂單」的工作表。</p><p><b>2</b>將下面的服務帳號加入共用，權限選「編輯者」。</p><p><b>3</b>貼上試算表網址並儲存，系統會立即測試連線。</p></div>
-              <label>分享給這個服務帳號<div class="copy-field"><input id="sheetsServiceEmail" readonly><button id="copySheetsServiceEmail" type="button" class="ghost">複製</button></div></label>
-              <label>Google 試算表網址<input id="sheetsUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/..."></label>
-              <label>工作表名稱<input id="sheetsName" maxlength="80" value="訂單" placeholder="訂單"></label>
-              <label class="switch"><input id="sheetsEnabled" type="checkbox"><span>啟用新訂單自動同步</span></label>
-              <button id="saveSheetsIntegration" type="button">儲存並測試同步</button>
+              <div id="sheetsConnected" class="line-complete" hidden>✓ Google 試算表同步已啟用</div>
+              <div class="sheet-step-card"><div class="sheet-step-title"><b>1</b><div><h4>建立試算表</h4><p>按下面按鈕建立新試算表，將左下角的工作表名稱改成「訂單」。</p></div></div><a class="button-link sheets-open-button" href="https://sheets.new" target="_blank" rel="noopener">開啟 Google 試算表 ↗</a></div>
+              <div class="sheet-step-card"><div class="sheet-step-title"><b>2</b><div><h4>把系統加入共用</h4><p>在試算表右上角按「共用」→ 貼上下方帳號 → 權限選「編輯者」→ 按「傳送」。</p></div></div><label>要加入共用的帳號<div class="copy-field"><input id="sheetsServiceEmail" readonly><button id="copySheetsServiceEmail" type="button" class="ghost">複製帳號</button></div></label><p class="field-help">這是系統專用帳號，不是您的 Google 帳號。</p></div>
+              <div class="sheet-step-card"><div class="sheet-step-title"><b>3</b><div><h4>貼上網址並測試</h4><p>回到剛才的試算表，複製瀏覽器上方網址，貼到下面。</p></div></div><label>Google 試算表網址<input id="sheetsUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/..."></label><label>工作表名稱<input id="sheetsName" maxlength="80" value="訂單" placeholder="訂單"></label><label class="switch"><input id="sheetsEnabled" type="checkbox" checked><span>啟用新訂單自動同步</span></label><button id="saveSheetsIntegration" type="button">儲存並測試連線</button></div>
               <p id="sheetsIntegrationError" class="error"></p>
             </div>
           </section>
@@ -188,6 +186,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-11" defer></script>
+  <script src="/admin/app.js?v=20260621-12" defer></script>
 </body>
 </html>
