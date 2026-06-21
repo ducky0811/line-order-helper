@@ -64,7 +64,7 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     assert.equal(orders[0].customer_name, '測試客戶');
     assert.equal(orders[0].line_user_id, 'Ucustomer');
     await fetch(`${base}/api/admin/settings`, {
-      method: 'PUT', headers, body: JSON.stringify({ bank_transfer_enabled: true, bank_account: '1234567890' })
+      method: 'PUT', headers, body: JSON.stringify({ bank_transfer_enabled: true, bank_account: '1234567890', logo_url: 'https://example.com/logo.png', hero_image_url: 'https://example.com/hero.jpg' })
     });
     const bankOrderResponse = await fetch(`${base}/api/shop/orders`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -86,6 +86,8 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     assert.equal(settingsResponse.status, 200);
     const config = await fetch(`${base}/api/shop/config`).then(response => response.json());
     assert.equal(config.store_name, '測試甜點店');
+    assert.equal(config.logo_url, 'https://example.com/logo.png');
+    assert.equal(config.hero_image_url, 'https://example.com/hero.jpg');
     assert.equal(config.bank_account, undefined);
     const closedOrder = await fetch(`${base}/api/shop/orders`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

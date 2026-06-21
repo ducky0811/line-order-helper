@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-1">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-2">
 </head>
 <body>
   <main class="shell">
@@ -71,7 +71,12 @@
           <div class="two-col"><label>銀行名稱<input id="bankName" maxlength="80" placeholder="例如：台灣銀行"></label><label>銀行代碼<input id="bankCode" maxlength="20" inputmode="numeric" placeholder="例如：004"></label></div>
           <div class="two-col"><label>匯款帳號<input id="bankAccount" maxlength="60" inputmode="numeric"></label><label>戶名<input id="bankAccountName" maxlength="80"></label></div>
           <label>付款說明<textarea id="paymentInstructions" rows="3" maxlength="300" placeholder="例如：請於三日內完成匯款"></textarea></label>
-          <div class="two-col"><label>Logo 網址<input id="logoUrl" type="url" placeholder="https://..."></label><label>首頁封面網址<input id="heroImageUrl" type="url" placeholder="https://..."></label></div>
+          <h3>商店圖片</h3>
+          <div class="brand-image-grid">
+            <label>商家 Logo<input id="logoFile" type="file" accept="image/jpeg,image/png,image/webp"><span class="field-help">可直接從手機相簿選擇。</span><img id="logoPreview" class="settings-image-preview logo" alt="商家 Logo 預覽" hidden><button id="removeLogo" type="button" class="ghost" hidden>移除 Logo</button></label>
+            <label>線上訂購封面圖<input id="heroImageFile" type="file" accept="image/jpeg,image/png,image/webp"><span class="field-help">未上傳時會使用系統預設圖片。</span><img id="heroImagePreview" class="settings-image-preview hero-preview" alt="封面圖預覽" hidden><button id="useDefaultHero" type="button" class="ghost" hidden>改用預設封面</button></label>
+          </div>
+          <details><summary>進階：使用圖片網址</summary><div class="two-col"><label>Logo 網址<input id="logoUrl" type="url" placeholder="https://..."></label><label>首頁封面網址<input id="heroImageUrl" type="url" placeholder="https://..."></label></div></details>
           <label class="switch"><input id="acceptingOrders" type="checkbox"><span>目前開放客戶下單</span></label>
           <p id="settingsError" class="error"></p>
           <button type="submit">儲存店家設定</button>
@@ -96,6 +101,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-3" defer></script>
+  <script src="/admin/app.js?v=20260621-4" defer></script>
 </body>
 </html>
