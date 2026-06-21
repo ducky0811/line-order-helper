@@ -6,6 +6,7 @@ const paymentLabels = { unpaid:'未付款',pending:'待核對',paid:'已付款',
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
+    cache: 'no-store',
     headers: { 'Content-Type':'application/json', Authorization:`Bearer ${state.token || ''}`, ...options.headers }
   });
   const data = response.status === 204 ? null : await response.json();
@@ -16,8 +17,9 @@ async function api(path, options = {}) {
 
 function toast(text) { const el=$('#toast'); el.textContent=text; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200); }
 function escapeHtml(value='') { return String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }
-function showApp() { $('#loginView').hidden=true; $('#registerView').hidden=true; $('#appView').hidden=false; loadProducts(); loadAccount(); }
-function logout() { localStorage.removeItem('adminToken'); state.token=null; $('#appView').hidden=true; $('#registerView').hidden=true; $('#loginView').hidden=false; }
+function clearMerchantView(){state.products=[];state.orders=[];state.fulfillmentOptions=[];state.account=null;state.activeTab='products';state.orderView='active';state.orderStatus='all';state.orderQuery='';$('#productList').innerHTML='<div class="empty">正在載入這間店的商品…</div>';$('#orderList').innerHTML='<div class="empty">正在載入這間店的訂單…</div>';$('#orderSearch').value='';$('#settingsForm').reset();updateBrandPreview('logo');updateBrandPreview('hero');$('#accountSummary').textContent='';document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab==='products'));$('#productsPanel').hidden=false;$('#ordersPanel').hidden=true;$('#settingsPanel').hidden=true;document.querySelectorAll('.order-filter').forEach(button=>button.classList.toggle('active',button.dataset.view==='active'));}
+function showApp() { clearMerchantView();$('#loginView').hidden=true; $('#registerView').hidden=true; $('#appView').hidden=false; loadProducts(); loadAccount(); }
+function logout() { localStorage.removeItem('adminToken'); state.token=null;clearMerchantView();$('#appView').hidden=true; $('#registerView').hidden=true; $('#loginView').hidden=false; }
 async function loadAccount(){try{state.account=await api('/api/admin/account');const merchant=state.account.merchant;if(!merchant){$('#accountSummary').textContent='既有測試商店';return;}const until=new Date(merchant.expires_at||merchant.trial_ends_at).toLocaleDateString('zh-TW');$('#accountSummary').innerHTML=`方案：${escapeHtml(merchant.plan==='trial'?'免費試用':merchant.plan)} · 到期日：${escapeHtml(until)} · <a href="${escapeHtml(state.account.shop_url)}" target="_blank">開啟商店</a>`;}catch(error){toast(error.message);}}
 
 $('#loginForm').addEventListener('submit', async event => {

@@ -122,10 +122,15 @@ test('兩間註冊店家的後台與公開商店資料互不相通', async () =>
     const productsB = await requestAdmin(b.token, '/products').then(response => response.json());
     assert.deepEqual(productsA.map(item => item.name), ['A 店蛋糕']);
     assert.deepEqual(productsB.map(item => item.name), ['B 店餅乾']);
-    const publicA = await fetch(`${base}/api/shop/products`, { headers: { 'X-Merchant-Slug': 'store-a' } }).then(response => response.json());
-    const publicB = await fetch(`${base}/api/shop/products`, { headers: { 'X-Merchant-Slug': 'store-b' } }).then(response => response.json());
+    const publicAResponse = await fetch(`${base}/api/shop/products`, { headers: { 'X-Merchant-Slug': 'store-a' } });
+    const publicBResponse = await fetch(`${base}/api/shop/products`, { headers: { 'X-Merchant-Slug': 'store-b' } });
+    assert.match(publicAResponse.headers.get('cache-control'), /no-store/);
+    assert.match(publicAResponse.headers.get('vary'), /X-Merchant-Slug/i);
+    const publicA = await publicAResponse.json(); const publicB = await publicBResponse.json();
     assert.deepEqual(publicA.map(item => item.name), ['A 店蛋糕']);
     assert.deepEqual(publicB.map(item => item.name), ['B 店餅乾']);
+    const spoofedAdmin = await fetch(`${base}/api/admin/products`, { headers: { Authorization: `Bearer ${a.token}`, 'X-Merchant-Slug': 'store-b' } }).then(response => response.json());
+    assert.deepEqual(spoofedAdmin.map(item => item.name), ['A 店蛋糕']);
     const orderResponse = await fetch(`${base}/api/shop/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Merchant-Slug': 'store-a' }, body: JSON.stringify({ customer_name: 'A 客戶', phone: '0900', items: [{ product_id: productsA[0].id, quantity: 1 }] }) });
     assert.equal(orderResponse.status, 201);
     assert.equal((await requestAdmin(a.token, '/orders').then(response => response.json())).length, 1);

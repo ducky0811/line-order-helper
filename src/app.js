@@ -58,6 +58,7 @@ async function createApp(options = {}) {
   });
 
   app.use(express.json({ limit: '4mb' }));
+  app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'private, no-store, max-age=0'); next(); });
   const staticOptions = {
     setHeaders(res, filePath) {
       if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
@@ -72,6 +73,7 @@ async function createApp(options = {}) {
   app.get('/health', (_req, res) => res.json({ ok: true, service: 'line-order-saas' }));
   app.use('/api/shop', async (req, res, next) => {
     try {
+      res.vary('X-Merchant-Slug');
       const requested = normalizeSlug(req.get('x-merchant-slug') || req.query.store || DEFAULT_MERCHANT_ID) || DEFAULT_MERCHANT_ID;
       const merchant = requested === DEFAULT_MERCHANT_ID ? null : await tenantRegistry.findBySlug(requested);
       if (requested !== DEFAULT_MERCHANT_ID && !merchant) return res.status(404).json({ error: '找不到這間商店' });

@@ -12,7 +12,7 @@ async function submitLast5(event){
   const error=document.querySelector('#paymentError');
   error.textContent='';
   try{
-    const response=await fetch(`/api/shop/orders/${encodeURIComponent(code)}/payment`,{method:'POST',headers:{...shopHeaders,'Content-Type':'application/json'},body:JSON.stringify({transfer_last5:last5})});
+    const response=await fetch(`/api/shop/orders/${encodeURIComponent(code)}/payment`,{method:'POST',cache:'no-store',headers:{...shopHeaders,'Content-Type':'application/json'},body:JSON.stringify({transfer_last5:last5})});
     const result=await response.json();
     if(!response.ok)throw new Error(result.error||'送出失敗');
     await load();
@@ -22,7 +22,7 @@ async function submitLast5(event){
 async function load(){
   if(!code){document.querySelector('#content').innerHTML='<p>缺少訂單查詢碼。</p>';return;}
   try{
-    const response=await fetch(`/api/shop/orders/${encodeURIComponent(code)}/status`,{headers:shopHeaders});
+    const response=await fetch(`/api/shop/orders/${encodeURIComponent(code)}/status`,{cache:'no-store',headers:shopHeaders});
     const order=await response.json();
     if(!response.ok)throw new Error(order.error||'查詢失敗');
     const paymentForm=order.payment_method==='bank_transfer'&&!['paid','refunded'].includes(order.payment_status)?`<form id="paymentForm"><label>匯款帳號末五碼<input id="last5" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" value="${escapeHtml(order.transfer_last5||'')}" required></label><button type="submit">送出末五碼</button><p id="paymentError" class="error"></p></form>`:'';
