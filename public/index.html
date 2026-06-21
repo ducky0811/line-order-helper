@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-5">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-6">
 </head>
 <body>
   <main class="shell">
@@ -111,9 +111,15 @@
               </section>
 
               <section class="line-step-card" data-line-step="2" hidden>
-                <div class="line-step-title"><b>步驟 2</b><div><h4>填入兩組連線金鑰</h4><p>從 LINE Developers 的 Messaging API 頻道複製；系統會加密保存並立即驗證。</p></div></div>
-                <label>Channel Access Token<input id="lineChannelAccessToken" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
-                <label>Channel Secret<input id="lineChannelSecret" type="password" autocomplete="new-password" placeholder="已設定時可留空"></label>
+                <div class="line-step-title"><b>步驟 2</b><div><h4>填入兩組連線金鑰</h4><p>建議使用電腦操作。先按下面的綠色按鈕登入，再照著兩張尋找卡片即可。</p></div></div>
+                <a class="line-developers-button" href="https://developers.line.biz/console/" target="_blank" rel="noopener">前往 LINE Developers 找金鑰 ↗</a>
+                <div class="line-key-guide">
+                  <div><b>① 找到 Channel Access Token</b><p>選擇店家的 Provider → 點選標示為 <strong>Messaging API</strong> 的頻道 → 上方選「Messaging API」→ 往下找到 Channel access token → 按 Issue，再複製。</p></div>
+                  <div><b>② 找到 Channel Secret</b><p>在同一個頻道，上方選「Basic settings」→ 往下找到 Channel secret → 按眼睛或 Show，再複製。</p></div>
+                </div>
+                <label>Channel Access Token <span class="label-hint">在 Messaging API 頁籤</span><input id="lineChannelAccessToken" type="password" autocomplete="new-password" placeholder="貼上很長的一串英文字母與數字"></label>
+                <label>Channel Secret <span class="label-hint">在 Basic settings 頁籤</span><input id="lineChannelSecret" type="password" autocomplete="new-password" placeholder="貼上 32 個英文字母與數字"></label>
+                <div class="line-safety-note">🔒 請貼「Token」與「Secret」，不要填 LINE 登入密碼。本系統會加密保存，設定完成後不會再次顯示。</div>
                 <div class="line-step-actions"><button type="button" class="ghost" data-line-back="1">上一步</button><button id="saveLineIntegration" type="button">儲存並驗證連線</button></div>
               </section>
 
