@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { createStore, DEFAULT_MERCHANT_ID } = require('./store');
 const { createAuth } = require('./auth');
 const { createSheetsService } = require('./sheets');
@@ -33,6 +34,7 @@ function friendlySheetsError(reason) {
   if (/404|not found|requested entity was not found/i.test(message)) return '找不到這份試算表，請重新複製瀏覽器上方的完整網址';
   return 'Google 試算表連線失敗，請確認共用帳號、編輯者權限與工作表名稱';
 }
+function secureEqual(left, right) { const a = Buffer.from(String(left || '')); const b = Buffer.from(String(right || '')); return a.length === b.length && crypto.timingSafeEqual(a, b); }
 
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
@@ -64,6 +66,9 @@ async function createApp(options = {}) {
   const sheets = options.sheets || createSheetsService();
   const bot = options.bot || createBot({ store, sheets });
   const auth = options.auth || createAuth();
+  const platformPassword = String(options.platformPassword ?? process.env.PLATFORM_ADMIN_PASSWORD ?? '');
+  const platformSecret = options.platformSecret || process.env.PLATFORM_ADMIN_SECRET || crypto.createHash('sha256').update(`${process.env.SESSION_SECRET || 'change-me'}:platform-admin`).digest('hex');
+  const platformAuth = options.platformAuth || createAuth({ password: platformPassword || crypto.randomBytes(32).toString('hex'), secret: platformSecret });
   const images = options.images || createImageService();
   const lineIdentity = options.lineIdentity || createLineIdentityService();
   const lineIntegrations = options.lineIntegrations || createLineIntegrationStore(rootDir);
@@ -119,6 +124,7 @@ async function createApp(options = {}) {
     }
   };
   app.use('/admin', express.static(path.join(rootDir, 'public'), staticOptions));
+  app.use('/platform', express.static(path.join(rootDir, 'platform'), staticOptions));
   app.use('/shop', express.static(path.join(rootDir, 'shop'), staticOptions));
   app.use('/track', express.static(path.join(rootDir, 'track'), staticOptions));
   app.get(['/shop/:slug', '/shop/:slug/'], (_req, res) => res.sendFile(path.join(rootDir, 'shop', 'index.html')));
@@ -233,6 +239,33 @@ async function createApp(options = {}) {
       res.json({ token: auth.issueToken(result.merchant.id, { email: result.user.email }), merchant: result.merchant, shop_url: `/shop/${result.merchant.slug}/` });
     } catch (error) { next(error); }
   });
+
+  const platformAttempts = new Map();
+  app.post('/api/platform/login', (req, res) => {
+    if (!platformPassword) return res.status(503).json({ error: '平台管理密碼尚未設定' });
+    const key = req.ip || 'unknown'; const attempt = platformAttempts.get(key) || { count: 0, resetAt: Date.now() + 15 * 60000 };
+    if (attempt.resetAt < Date.now()) { attempt.count = 0; attempt.resetAt = Date.now() + 15 * 60000; }
+    if (attempt.count >= 8) return res.status(429).json({ error: '嘗試次數過多，請 15 分鐘後再試' });
+    if (!secureEqual(req.body?.password, platformPassword)) { attempt.count += 1; platformAttempts.set(key, attempt); return res.status(401).json({ error: '平台管理密碼不正確' }); }
+    platformAttempts.delete(key); return res.json({ token: platformAuth.issueToken('platform', { role: 'platform-admin' }) });
+  });
+  const platform = express.Router();
+  platform.use((req, res, next) => platformAuth.requireAdmin(req, res, error => { if (error) return next(error); if (req.session?.role !== 'platform-admin') return res.status(403).json({ error: '沒有平台管理權限' }); next(); }));
+  platform.get('/summary', async (_req, res, next) => {
+    try {
+      const merchants = await tenantRegistry.listMerchantSummaries();
+      const rows = [];
+      for (const merchant of merchants) {
+        const merchantStore = await getStore(merchant.id); const [orders, products] = await Promise.all([merchantStore.listOrders(), merchantStore.listProducts()]);
+        rows.push({ ...merchant, password_hash: undefined, order_count: orders.length, product_count: products.length, revenue: orders.filter(order => !['cancelled'].includes(order.status)).reduce((sum, order) => sum + Number(order.total || 0), 0), can_accept_orders: canAcceptOrders(merchant), capabilities: planCapabilities(merchant), shop_url: `/shop/${merchant.slug}/` });
+      }
+      res.json({ merchants: rows, totals: { merchants: rows.length, trial: rows.filter(item => item.plan === 'trial').length, basic: rows.filter(item => item.plan === 'basic').length, pro: rows.filter(item => item.plan === 'pro').length, active: rows.filter(item => item.can_accept_orders).length } });
+    } catch (error) { next(error); }
+  });
+  platform.patch('/merchants/:id/subscription', async (req, res, next) => {
+    try { const merchant = await tenantRegistry.updateSubscription(req.params.id, { plan: req.body?.plan, months: req.body?.months, extend: req.body?.extend !== false, suspended: req.body?.suspended === true }); console.log(`🔐 平台管理員更新店家 ${merchant.id}：${merchant.plan}，到期 ${merchant.expires_at}，狀態 ${merchant.subscription_status}`); res.json(merchant); } catch (error) { next(error); }
+  });
+  app.use('/api/platform', platform);
 
   const admin = express.Router();
   admin.use(auth.requireAdmin);

@@ -58,6 +58,17 @@ function retentionPolicy(merchant, now = new Date()) {
   const activeCutoff = merchant?.plan === 'trial' ? null : new Date(now.getTime() - capabilities.retention_days * 86400000);
   return { retention_days: capabilities.retention_days, expires_at: validExpiry ? expiresAt.toISOString() : null, delete_at: graceDeleteAt?.toISOString() || null, purge_before: expiredBeyondGrace ? now.toISOString() : activeCutoff?.toISOString() || null };
 }
+function subscriptionUpdate(merchant, input = {}, now = new Date()) {
+  if (!input.plan && typeof input.suspended === 'boolean') return { subscription_status: input.suspended ? 'suspended' : merchant.plan === 'trial' ? 'trialing' : 'active', active: !input.suspended, updated_at: now.toISOString() };
+  const plan = ['trial', 'basic', 'pro'].includes(input.plan) ? input.plan : merchant.plan;
+  const months = Math.min(24, Math.max(1, Number(input.months) || 1));
+  const currentExpiry = new Date(merchant.expires_at || merchant.trial_ends_at || 0);
+  const base = input.extend !== false && currentExpiry.getTime() > now.getTime() ? currentExpiry : now;
+  const expiresAt = new Date(base);
+  if (plan === 'trial') expiresAt.setDate(expiresAt.getDate() + 14);
+  else expiresAt.setMonth(expiresAt.getMonth() + months);
+  return { plan, subscription_status: input.suspended === true ? 'suspended' : plan === 'trial' ? 'trialing' : 'active', active: input.suspended !== true, expires_at: expiresAt.toISOString(), trial_ends_at: plan === 'trial' ? expiresAt.toISOString() : merchant.trial_ends_at, updated_at: now.toISOString() };
+}
 
 class LocalTenantRegistry {
   constructor(rootDir) { this.file = path.join(rootDir, 'data', 'tenants.json'); }
@@ -69,6 +80,8 @@ class LocalTenantRegistry {
   async findBySlug(slug) { return (await this.read()).merchants.find(item => item.slug === normalizeSlug(slug)) || null; }
   async findById(id) { return (await this.read()).merchants.find(item => item.id === id) || null; }
   async listMerchants() { return (await this.read()).merchants; }
+  async listMerchantSummaries() { const data = await this.read(); return data.merchants.map(merchant => ({ ...merchant, email: data.users.find(user => user.merchant_id === merchant.id)?.email || '' })); }
+  async updateSubscription(id, input) { const data = await this.read(); const index = data.merchants.findIndex(item => item.id === id); if (index < 0) throw new Error('找不到店家'); data.merchants[index] = { ...data.merchants[index], ...subscriptionUpdate(data.merchants[index], input) }; await this.write(data); return data.merchants[index]; }
 }
 
 class SupabaseTenantRegistry {
@@ -80,6 +93,8 @@ class SupabaseTenantRegistry {
   async findBySlug(slug) { const rows = await this.request(`merchants?slug=eq.${encodeURIComponent(normalizeSlug(slug))}&limit=1`); return rows[0] || null; }
   async findById(id) { const rows = await this.request(`merchants?id=eq.${encodeURIComponent(id)}&limit=1`); return rows[0] || null; }
   async listMerchants() { return this.request('merchants?select=*&order=created_at.asc'); }
+  async listMerchantSummaries() { const [merchants, users] = await Promise.all([this.listMerchants(), this.request('merchant_users?select=merchant_id,email,role')]); return merchants.map(merchant => ({ ...merchant, email: users.find(user => user.merchant_id === merchant.id && user.role === 'owner')?.email || users.find(user => user.merchant_id === merchant.id)?.email || '' })); }
+  async updateSubscription(id, input) { const merchant = await this.findById(id); if (!merchant) throw new Error('找不到店家'); const rows = await this.request(`merchants?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(subscriptionUpdate(merchant, input)) }); return rows[0]; }
 }
 
 function createTenantRegistry(rootDir) {
@@ -87,4 +102,4 @@ function createTenantRegistry(rootDir) {
   return process.env.SUPABASE_URL && key ? new SupabaseTenantRegistry(process.env.SUPABASE_URL, key) : new LocalTenantRegistry(rootDir);
 }
 
-module.exports = { createTenantRegistry, LocalTenantRegistry, SupabaseTenantRegistry, normalizeSlug, hashPassword, verifyPassword, canAcceptOrders, planCapabilities, hasPlanFeature, retentionPolicy, PLAN_FEATURES, TRIAL_DAYS };
+module.exports = { createTenantRegistry, LocalTenantRegistry, SupabaseTenantRegistry, normalizeSlug, hashPassword, verifyPassword, canAcceptOrders, planCapabilities, hasPlanFeature, retentionPolicy, subscriptionUpdate, PLAN_FEATURES, TRIAL_DAYS };
