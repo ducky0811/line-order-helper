@@ -217,6 +217,14 @@ class LocalStore {
     return this.readJson(this.ordersFile);
   }
 
+  async purgeOrdersBefore(cutoff) {
+    if (!cutoff) return 0;
+    const orders = await this.readJson(this.ordersFile);
+    const kept = orders.filter(item => new Date(item.created_at).getTime() >= new Date(cutoff).getTime());
+    if (kept.length !== orders.length) await this.writeJson(this.ordersFile, kept);
+    return orders.length - kept.length;
+  }
+
   async updateOrderStatus(id, status) {
     const allowed = ['new', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
     if (!allowed.includes(status)) throw new Error('訂單狀態不正確');
@@ -347,6 +355,12 @@ class SupabaseStore {
 
   async listOrders() {
     return this.request(`orders?merchant_id=eq.${encodeURIComponent(this.merchantId)}&order=created_at.desc&limit=1000`);
+  }
+
+  async purgeOrdersBefore(cutoff) {
+    if (!cutoff) return 0;
+    const rows = await this.request(`orders?merchant_id=eq.${encodeURIComponent(this.merchantId)}&created_at=lt.${encodeURIComponent(cutoff)}`, { method: 'DELETE' });
+    return rows?.length || 0;
   }
 
   async updateOrderStatus(id, status) {

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-7">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-8">
 </head>
 <body>
   <main class="shell">
@@ -35,9 +35,9 @@
         <p><b>比 Google 表單／私訊更省工：</b>自動計算金額、產生訂單、追蹤付款和處理進度。</p><p><b>比 Linktree 類工具更完整：</b>不只導向連結，而是真的完成選購、下單與店家接單。</p><p><b>比大型開店平台更輕巧：</b>聚焦小店、預購、甜點與工作室，不必先學金流、物流和複雜後台。</p><p><b>不綁死 LINE：</b>商店網址可放在 IG、Facebook 或任何網站；想用 LINE 通知時再連接自己的官方帳號。</p>
       </div></section>
       <section id="pricing" class="landing-section pricing-section"><span class="section-kicker">簡單透明的方案</span><h2>先免費試用，再選適合的方案</h2><p class="pricing-intro">免費試用 14 天可體驗完整流程，不需信用卡。</p><div class="pricing-grid">
-        <article class="price-card"><h3>基本版</h3><div class="plan-price"><b>NT$499</b><span>／月</span></div><p>適合從 IG、Facebook 導流，想擺脫私訊抄單的小店。</p><ul><li>專屬線上商品頁</li><li>商品、庫存與停售管理</li><li>訂單狀態、搜尋與歷史訂單</li><li>自訂取貨、付款與訂購欄位</li><li>銀行轉帳末五碼核對</li><li>商家 Logo 與封面圖片</li></ul><button type="button" class="ghost" data-show-register>開始免費試用</button></article>
-        <article class="price-card recommended"><span class="popular">最完整</span><h3>專業版</h3><div class="plan-price"><b>NT$999</b><span>／月</span></div><p>適合希望用自己的 LINE 官方帳號，自動確認與通知客戶的店家。</p><ul><li>包含基本版全部功能</li><li>連接自己的 LINE 官方帳號</li><li>客戶 LINE 訂單確認</li><li>店家 LINE 新訂單通知</li><li>訂單狀態自動通知客戶</li><li>四步驟 LINE 設定引導</li></ul><button type="button" data-show-register>開始免費試用</button></article>
-      </div><div class="pricing-note">方案費用不含 LINE 官方帳號本身可能產生的訊息費用。目前提供現金與銀行轉帳；線上刷卡、電子發票及物流串接不在現有功能內。</div></section>
+        <article class="price-card"><h3>基本版</h3><div class="plan-price"><b>NT$499</b><span>／月</span></div><p>適合從 IG、Facebook 導流，想擺脫私訊抄單的小店。</p><ul><li>專屬線上商品頁</li><li>商品、庫存與停售管理</li><li>訂單狀態、搜尋與歷史訂單</li><li>自訂取貨、付款與訂購欄位</li><li>銀行轉帳末五碼核對</li><li>訂單資料保存 12 個月</li></ul><button type="button" class="ghost" data-show-register>開始免費試用</button></article>
+        <article class="price-card recommended"><span class="popular">最完整</span><h3>專業版</h3><div class="plan-price"><b>NT$999</b><span>／月</span></div><p>適合希望自動通知客戶，並保留試算表備份的店家。</p><ul><li>包含基本版全部功能</li><li>連接自己的 LINE 官方帳號</li><li>客戶確認、新訂單與進度通知</li><li>每店獨立 Google 試算表同步</li><li>不需提供 Google 密碼或金鑰</li><li>訂單資料保存 3 年</li></ul><button type="button" data-show-register>開始免費試用</button></article>
+      </div><div class="pricing-note">試用或付費方案到期後停止接新訂單，訂單資料保留 30 天供店家處理與匯出，之後刪除。方案費用不含 LINE 官方帳號本身可能產生的訊息費用。目前提供現金與銀行轉帳；線上刷卡、電子發票及物流串接不在現有功能內。</div></section>
       <section class="landing-cta"><h2>讓接單回到做生意，不再整理聊天室</h2><p>14 天免費試用，先用自己的商品完整走一次流程。</p><button type="button" data-show-register>建立免費試用商店</button></section>
       <footer class="landing-footer">接單小幫手｜為社群小店打造的簡單接單系統</footer>
     </section>
@@ -113,6 +113,7 @@
           <section class="line-settings">
             <h3>LINE 官方帳號連接</h3><p class="field-help">只有啟用並完成連接的店家，客戶才會看到 LINE 訂單確認，店家與客戶也才會收到 LINE 通知。</p>
             <div id="legacyLineNotice" class="notice" hidden>這是既有商店，LINE 憑證目前由 Zeabur 環境變數管理。</div>
+            <div id="linePlanLock" class="plan-lock" hidden><b>專業版功能</b><span>升級專業版即可連接自己的 LINE 官方帳號，自動確認與通知訂單。</span></div>
             <div id="tenantLineSettings" class="line-wizard">
               <div class="line-wizard-progress" aria-label="LINE 設定進度">
                 <button type="button" data-line-go="1"><b>1</b><span>官方帳號</span></button>
@@ -158,6 +159,20 @@
               <p id="lineIntegrationError" class="error"></p>
             </div>
           </section>
+          <section class="line-settings sheets-settings">
+            <h3>Google 試算表同步</h3><p class="field-help">每筆新訂單會同步到店家自己的試算表；不需要提供 Google 密碼或金鑰。</p>
+            <div id="legacySheetsNotice" class="notice" hidden>這是既有商店，Google Sheets 目前由 Zeabur 環境變數管理。</div>
+            <div id="sheetsPlanLock" class="plan-lock" hidden><b>專業版功能</b><span>升級專業版即可將新訂單即時備份到自己的 Google 試算表。</span></div>
+            <div id="tenantSheetsSettings">
+              <div class="sheet-setup-steps"><p><b>1</b>建立 Google 試算表，新增名為「訂單」的工作表。</p><p><b>2</b>將下面的服務帳號加入共用，權限選「編輯者」。</p><p><b>3</b>貼上試算表網址並儲存，系統會立即測試連線。</p></div>
+              <label>分享給這個服務帳號<div class="copy-field"><input id="sheetsServiceEmail" readonly><button id="copySheetsServiceEmail" type="button" class="ghost">複製</button></div></label>
+              <label>Google 試算表網址<input id="sheetsUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/..."></label>
+              <label>工作表名稱<input id="sheetsName" maxlength="80" value="訂單" placeholder="訂單"></label>
+              <label class="switch"><input id="sheetsEnabled" type="checkbox"><span>啟用新訂單自動同步</span></label>
+              <button id="saveSheetsIntegration" type="button">儲存並測試同步</button>
+              <p id="sheetsIntegrationError" class="error"></p>
+            </div>
+          </section>
           <label class="switch"><input id="acceptingOrders" type="checkbox"><span>目前開放客戶下單</span></label>
           <p id="settingsError" class="error"></p>
           <button type="submit">儲存店家設定</button>
@@ -182,6 +197,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-9" defer></script>
+  <script src="/admin/app.js?v=20260621-10" defer></script>
 </body>
 </html>

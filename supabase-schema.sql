@@ -43,6 +43,14 @@ create table if not exists public.merchant_line_integrations (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.merchant_sheet_integrations (
+  merchant_id text primary key references public.merchants(id) on delete cascade,
+  enabled boolean not null default false,
+  spreadsheet_id text not null default '',
+  sheet_name text not null default '訂單',
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.orders (
   id uuid primary key,
   merchant_id text not null,
@@ -99,6 +107,7 @@ alter table public.store_settings enable row level security;
 alter table public.merchants enable row level security;
 alter table public.merchant_users enable row level security;
 alter table public.merchant_line_integrations enable row level security;
+alter table public.merchant_sheet_integrations enable row level security;
 -- 後端只使用 service role key；請勿把 service role key 放進瀏覽器端。
 
 -- 若舊測試資料庫已先建立 orders，可安全重跑以下欄位升級。

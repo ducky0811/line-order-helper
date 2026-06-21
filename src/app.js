@@ -8,8 +8,9 @@ const { createBot } = require('./bot');
 const { buildOrder } = require('./orders');
 const { createImageService } = require('./images');
 const { createLineIdentityService } = require('./line-identity');
-const { createTenantRegistry, normalizeSlug, canAcceptOrders } = require('./tenants');
+const { createTenantRegistry, normalizeSlug, canAcceptOrders, planCapabilities, hasPlanFeature, retentionPolicy } = require('./tenants');
 const { createLineIntegrationStore, publicIntegration, credentials } = require('./line-integrations');
+const { createSheetIntegrationStore, publicSheetIntegration } = require('./sheet-integrations');
 
 function createLineConfirmUrl(order, rawId) {
   const officialId = String(rawId || '').trim().replace(/[^@a-zA-Z0-9._-]/g, '');
@@ -41,6 +42,15 @@ async function createApp(options = {}) {
     }
     return stores.get(id);
   }
+  async function purgeRetainedOrders() {
+    for (const merchant of await tenantRegistry.listMerchants()) {
+      const policy = retentionPolicy(merchant);
+      if (policy.purge_before) await (await getStore(merchant.id)).purgeOrdersBefore(policy.purge_before);
+    }
+  }
+  purgeRetainedOrders().catch(error => console.error('❌ 訂單保存期限整理失敗：', error.message));
+  const retentionTimer = setInterval(() => purgeRetainedOrders().catch(error => console.error('❌ 訂單保存期限整理失敗：', error.message)), 86400000);
+  retentionTimer.unref?.();
   const sheets = options.sheets || createSheetsService();
   const bot = options.bot || createBot({ store, sheets });
   const auth = options.auth || createAuth();
@@ -48,6 +58,8 @@ async function createApp(options = {}) {
   const lineIdentity = options.lineIdentity || createLineIdentityService();
   const lineIntegrations = options.lineIntegrations || createLineIntegrationStore(rootDir);
   await lineIntegrations.init();
+  const sheetIntegrations = options.sheetIntegrations || createSheetIntegrationStore(rootDir);
+  await sheetIntegrations.init();
   const tenantBots = new Map();
   async function getTenantBot(merchantId, refresh = false) {
     const row = await lineIntegrations.get(merchantId);
@@ -56,7 +68,8 @@ async function createApp(options = {}) {
     const cached = tenantBots.get(merchantId);
     if (!refresh && cached?.updatedAt === row.updated_at) return cached;
     const tenantStore = await getStore(merchantId);
-    const tenantBot = createBot({ store: tenantStore, sheets: { saveOrder: async () => null }, config: { ...config, merchantSlug: merchantId, publicBaseUrl: process.env.PUBLIC_BASE_URL || '' } });
+    const tenantSheets = { saveOrder: async order => { const merchant = await tenantRegistry.findById(merchantId); if (!hasPlanFeature(merchant, 'sheets')) return null; const sheetConfig = await sheetIntegrations.get(merchantId); return sheetConfig?.enabled ? sheets.saveOrder(order, sheetConfig) : null; } };
+    const tenantBot = createBot({ store: tenantStore, sheets: tenantSheets, config: { ...config, merchantSlug: merchantId, publicBaseUrl: process.env.PUBLIC_BASE_URL || '' } });
     const result = { bot: tenantBot, row, config, updatedAt: row.updated_at };
     tenantBots.set(merchantId, result);
     return result;
@@ -77,6 +90,7 @@ async function createApp(options = {}) {
     try {
       const merchant = await tenantRegistry.findBySlug(req.params.slug);
       if (!merchant) return res.status(404).end();
+      if (!hasPlanFeature(merchant, 'line')) return res.status(403).end();
       const connected = await getTenantBot(merchant.id);
       if (!connected) return res.status(404).end();
       connected.bot.middleware(req, res, async error => {
@@ -121,7 +135,7 @@ async function createApp(options = {}) {
       const { merchant_line_user_id, bank_name, bank_code, bank_account, bank_account_name, payment_instructions, ...publicSettings } = settings;
       const subscriptionOpen = req.merchant ? canAcceptOrders(req.merchant) : true;
       const tenantLine = req.merchant ? publicIntegration(await lineIntegrations.get(req.merchantId), process.env.PUBLIC_BASE_URL || '') : null;
-      res.json({ ...publicSettings, accepting_orders: publicSettings.accepting_orders !== false && subscriptionOpen, merchant_slug: req.merchant?.slug || DEFAULT_MERCHANT_ID, plan: req.merchant?.plan || 'legacy', subscription_status: req.merchant?.subscription_status || 'active', accepting_subscription_orders: subscriptionOpen, platform_branding: req.merchant?.plan !== 'pro', platform_sales_url: getPlatformSalesUrl(), line_enabled: req.merchant ? tenantLine.enabled && tenantLine.configured : Boolean(process.env.LINE_OFFICIAL_ACCOUNT_ID), liff_id: req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LIFF_ID || '' : '' });
+      res.json({ ...publicSettings, accepting_orders: publicSettings.accepting_orders !== false && subscriptionOpen, merchant_slug: req.merchant?.slug || DEFAULT_MERCHANT_ID, plan: req.merchant?.plan || 'legacy', subscription_status: req.merchant?.subscription_status || 'active', accepting_subscription_orders: subscriptionOpen, platform_branding: req.merchant?.plan !== 'pro', platform_sales_url: getPlatformSalesUrl(), line_enabled: req.merchant ? hasPlanFeature(req.merchant, 'line') && tenantLine.enabled && tenantLine.configured : Boolean(process.env.LINE_OFFICIAL_ACCOUNT_ID), liff_id: req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LIFF_ID || '' : '' });
     } catch (error) { next(error); }
   });
   app.post('/api/shop/orders', async (req, res, next) => {
@@ -142,9 +156,12 @@ async function createApp(options = {}) {
       const time = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
       let tenantLine = null;
       if (req.merchantId === DEFAULT_MERCHANT_ID) {
-        await sheets.saveOrder({ time, summary: input.summary, total: input.total }).catch(error => console.error('❌ 寫入 Google Sheets 失敗：', error));
+        await sheets.saveOrder({ time, ...order }).catch(error => console.error('❌ 寫入 Google Sheets 失敗：', error));
         await bot.notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error));
-      } else { tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine) await tenantLine.bot.notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error)); }
+      } else {
+        if (hasPlanFeature(req.merchant, 'sheets')) { const sheetConfig = await sheetIntegrations.get(req.merchantId); if (sheetConfig?.enabled) await sheets.saveOrder({ time, ...order }, sheetConfig).catch(error => console.error('❌ 店家 Google Sheets 同步失敗：', error)); }
+        if (hasPlanFeature(req.merchant, 'line')) { tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine) await tenantLine.bot.notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error)); }
+      }
       res.status(201).json({
         id: order.id,
         total: order.total,
@@ -186,7 +203,7 @@ async function createApp(options = {}) {
       if (!/^\d{5}$/.test(last5)) throw new Error('請輸入匯款帳號末五碼');
       const order = await req.store.submitTransferLast5(req.params.claimCode, last5);
       if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyPaymentSubmitted) await bot.notifyPaymentSubmitted(order).catch(error => console.error('❌ 店家 LINE 匯款通知失敗：', error));
-      else if (req.merchantId !== DEFAULT_MERCHANT_ID) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyPaymentSubmitted) await tenantLine.bot.notifyPaymentSubmitted(order).catch(error => console.error('❌ 店家 LINE 匯款通知失敗：', error)); }
+      else if (req.merchantId !== DEFAULT_MERCHANT_ID && hasPlanFeature(req.merchant, 'line')) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyPaymentSubmitted) await tenantLine.bot.notifyPaymentSubmitted(order).catch(error => console.error('❌ 店家 LINE 匯款通知失敗：', error)); }
       res.json({ payment_status: order.payment_status });
     } catch (error) { next(error); }
   });
@@ -210,9 +227,11 @@ async function createApp(options = {}) {
   const admin = express.Router();
   admin.use(auth.requireAdmin);
   admin.use(async (req, _res, next) => { try { req.store = await getStore(req.merchantId); req.merchant = req.merchantId === DEFAULT_MERCHANT_ID ? null : await tenantRegistry.findById(req.merchantId); next(); } catch (error) { next(error); } });
-  admin.get('/account', async (req, res) => res.json({ merchant_id: req.merchantId, merchant: req.merchant, shop_url: req.merchant ? `/shop/${req.merchant.slug}/` : '/shop/', can_accept_orders: req.merchant ? canAcceptOrders(req.merchant) : true }));
-  admin.get('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.json({ legacy: true, enabled: Boolean(process.env.CHANNEL_ACCESS_TOKEN), configured: Boolean(process.env.CHANNEL_ACCESS_TOKEN && process.env.CHANNEL_SECRET), official_account_id: process.env.LINE_OFFICIAL_ACCOUNT_ID || '', webhook_url: `${String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')}/webhook` }); const safe = publicIntegration(await lineIntegrations.get(req.merchantId), process.env.PUBLIC_BASE_URL || ''); const settings = await req.store.getSettings(); res.json({ ...safe, bound: Boolean(settings.merchant_line_user_id) }); } catch (error) { next(error); } });
-  admin.put('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 LINE 環境變數' }); const row = await lineIntegrations.save(req.merchantId, req.body || {}); tenantBots.delete(req.merchantId); if (row.enabled) { try { const connected = await getTenantBot(req.merchantId, true); await connected.bot.verifyConnection(); } catch (reason) { await lineIntegrations.save(req.merchantId, { enabled: false }); tenantBots.delete(req.merchantId); const error = new Error('LINE Channel Access Token 驗證失敗，已保持停用，請檢查後重試'); error.status = 400; throw error; } } res.json(publicIntegration(row, process.env.PUBLIC_BASE_URL || '')); } catch (error) { next(error); } });
+  admin.get('/account', async (req, res) => { const capabilities = req.merchant ? planCapabilities(req.merchant) : { plan: 'legacy', line: true, sheets: true, retention_days: null, label: '既有方案' }; res.json({ merchant_id: req.merchantId, merchant: req.merchant, shop_url: req.merchant ? `/shop/${req.merchant.slug}/` : '/shop/', can_accept_orders: req.merchant ? canAcceptOrders(req.merchant) : true, capabilities, retention: req.merchant ? retentionPolicy(req.merchant) : null }); });
+  admin.get('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.json({ legacy: true, enabled: Boolean(process.env.CHANNEL_ACCESS_TOKEN), configured: Boolean(process.env.CHANNEL_ACCESS_TOKEN && process.env.CHANNEL_SECRET), official_account_id: process.env.LINE_OFFICIAL_ACCOUNT_ID || '', webhook_url: `${String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')}/webhook` }); if (!hasPlanFeature(req.merchant, 'line')) return res.json({ locked: true, required_plan: 'pro', enabled: false }); const safe = publicIntegration(await lineIntegrations.get(req.merchantId), process.env.PUBLIC_BASE_URL || ''); const settings = await req.store.getSettings(); res.json({ ...safe, bound: Boolean(settings.merchant_line_user_id) }); } catch (error) { next(error); } });
+  admin.put('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 LINE 環境變數' }); if (!hasPlanFeature(req.merchant, 'line')) return res.status(403).json({ error: 'LINE 自動通知為專業版功能' }); const row = await lineIntegrations.save(req.merchantId, req.body || {}); tenantBots.delete(req.merchantId); if (row.enabled) { try { const connected = await getTenantBot(req.merchantId, true); await connected.bot.verifyConnection(); } catch (reason) { await lineIntegrations.save(req.merchantId, { enabled: false }); tenantBots.delete(req.merchantId); const error = new Error('LINE Channel Access Token 驗證失敗，已保持停用，請檢查後重試'); error.status = 400; throw error; } } res.json(publicIntegration(row, process.env.PUBLIC_BASE_URL || '')); } catch (error) { next(error); } });
+  admin.get('/sheets-integration', async (req, res, next) => { try { if (!req.merchant) return res.json({ legacy: true, enabled: sheets.available, service_account_email: sheets.serviceAccountEmail || '' }); if (!hasPlanFeature(req.merchant, 'sheets')) return res.json({ locked: true, required_plan: 'pro', enabled: false }); res.json(publicSheetIntegration(await sheetIntegrations.get(req.merchantId), sheets.serviceAccountEmail)); } catch (error) { next(error); } });
+  admin.put('/sheets-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 Google Sheets 環境變數' }); if (!hasPlanFeature(req.merchant, 'sheets')) return res.status(403).json({ error: 'Google 試算表同步為專業版功能' }); const row = await sheetIntegrations.save(req.merchantId, req.body || {}); if (row.enabled) { try { await sheets.verify(row); } catch (reason) { await sheetIntegrations.save(req.merchantId, { enabled: false }); const error = new Error('無法開啟這份試算表，請確認已把服務帳號設為編輯者，且工作表名稱正確'); error.status = 400; throw error; } } res.json(publicSheetIntegration(row, sheets.serviceAccountEmail)); } catch (error) { next(error); } });
   admin.get('/products', async (req, res, next) => {
     try { res.json(await req.store.listProducts()); } catch (error) { next(error); }
   });
@@ -235,13 +254,13 @@ async function createApp(options = {}) {
     try { await req.store.deleteProduct(req.params.id); res.status(204).end(); } catch (error) { next(error); }
   });
   admin.get('/orders', async (req, res, next) => {
-    try { res.json(await req.store.listOrders()); } catch (error) { next(error); }
+    try { if (req.merchant) { const policy = retentionPolicy(req.merchant); if (policy.purge_before) await req.store.purgeOrdersBefore(policy.purge_before); } res.json(await req.store.listOrders()); } catch (error) { next(error); }
   });
   admin.patch('/orders/:id/status', async (req, res, next) => {
     try {
       const order = await req.store.updateOrderStatus(req.params.id, req.body.status);
       if (req.merchantId === DEFAULT_MERCHANT_ID) await bot.notifyOrderStatus(order).catch(error => console.error('❌ LINE 訂單通知失敗：', error));
-      else { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine) await tenantLine.bot.notifyOrderStatus(order).catch(error => console.error('❌ LINE 訂單通知失敗：', error)); }
+      else if (hasPlanFeature(req.merchant, 'line')) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine) await tenantLine.bot.notifyOrderStatus(order).catch(error => console.error('❌ LINE 訂單通知失敗：', error)); }
       res.json(order);
     } catch (error) { next(error); }
   });
@@ -250,7 +269,7 @@ async function createApp(options = {}) {
       const order = await req.store.updatePaymentStatus(req.params.id, req.body.payment_status);
       if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyPaymentStatus) {
         await bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error));
-      } else if (req.merchantId !== DEFAULT_MERCHANT_ID) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyPaymentStatus) await tenantLine.bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error)); }
+      } else if (req.merchantId !== DEFAULT_MERCHANT_ID && hasPlanFeature(req.merchant, 'line')) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyPaymentStatus) await tenantLine.bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error)); }
       res.json(order);
     } catch (error) { next(error); }
   });
@@ -261,7 +280,7 @@ async function createApp(options = {}) {
     if (status >= 500) console.error(error);
     res.status(status).json({ error: error.message || '操作失敗' });
   });
-  return { app, store, bot, tenantRegistry, getStore, lineIntegrations, getTenantBot };
+  return { app, store, bot, tenantRegistry, getStore, lineIntegrations, sheetIntegrations, getTenantBot };
 }
 
 module.exports = { createApp, createLineConfirmUrl };

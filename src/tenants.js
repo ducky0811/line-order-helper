@@ -3,6 +3,11 @@ const path = require('path');
 const crypto = require('crypto');
 
 const TRIAL_DAYS = 14;
+const PLAN_FEATURES = {
+  trial: { line: true, sheets: true, retention_days: 30, label: '免費試用' },
+  basic: { line: false, sheets: false, retention_days: 365, label: '基本版' },
+  pro: { line: true, sheets: true, retention_days: 1095, label: '專業版' }
+};
 
 function normalizeSlug(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
@@ -39,6 +44,20 @@ function canAcceptOrders(merchant) {
   if (merchant.plan === 'trial') return new Date(merchant.trial_ends_at).getTime() > Date.now();
   return !merchant.expires_at || new Date(merchant.expires_at).getTime() > Date.now();
 }
+function planCapabilities(merchant) {
+  const plan = PLAN_FEATURES[merchant?.plan] ? merchant.plan : 'basic';
+  return { plan, ...PLAN_FEATURES[plan] };
+}
+function hasPlanFeature(merchant, feature) { return Boolean(planCapabilities(merchant)[feature]); }
+function retentionPolicy(merchant, now = new Date()) {
+  const capabilities = planCapabilities(merchant);
+  const expiresAt = new Date(merchant?.expires_at || merchant?.trial_ends_at || 0);
+  const validExpiry = Number.isFinite(expiresAt.getTime());
+  const graceDeleteAt = validExpiry ? new Date(expiresAt.getTime() + 30 * 86400000) : null;
+  const expiredBeyondGrace = graceDeleteAt && graceDeleteAt.getTime() <= now.getTime();
+  const activeCutoff = merchant?.plan === 'trial' ? null : new Date(now.getTime() - capabilities.retention_days * 86400000);
+  return { retention_days: capabilities.retention_days, expires_at: validExpiry ? expiresAt.toISOString() : null, delete_at: graceDeleteAt?.toISOString() || null, purge_before: expiredBeyondGrace ? now.toISOString() : activeCutoff?.toISOString() || null };
+}
 
 class LocalTenantRegistry {
   constructor(rootDir) { this.file = path.join(rootDir, 'data', 'tenants.json'); }
@@ -49,6 +68,7 @@ class LocalTenantRegistry {
   async authenticate(email, password) { const data = await this.read(); const user = data.users.find(item => item.email === normalizeEmail(email)); if (!user || !verifyPassword(password, user.password_hash)) return null; return { user, merchant: data.merchants.find(item => item.id === user.merchant_id) }; }
   async findBySlug(slug) { return (await this.read()).merchants.find(item => item.slug === normalizeSlug(slug)) || null; }
   async findById(id) { return (await this.read()).merchants.find(item => item.id === id) || null; }
+  async listMerchants() { return (await this.read()).merchants; }
 }
 
 class SupabaseTenantRegistry {
@@ -59,6 +79,7 @@ class SupabaseTenantRegistry {
   async authenticate(email, password) { const rows = await this.request(`merchant_users?email=eq.${encodeURIComponent(normalizeEmail(email))}&limit=1`); const user = rows[0]; if (!user || !verifyPassword(password, user.password_hash)) return null; return { user, merchant: await this.findById(user.merchant_id) }; }
   async findBySlug(slug) { const rows = await this.request(`merchants?slug=eq.${encodeURIComponent(normalizeSlug(slug))}&limit=1`); return rows[0] || null; }
   async findById(id) { const rows = await this.request(`merchants?id=eq.${encodeURIComponent(id)}&limit=1`); return rows[0] || null; }
+  async listMerchants() { return this.request('merchants?select=*&order=created_at.asc'); }
 }
 
 function createTenantRegistry(rootDir) {
@@ -66,4 +87,4 @@ function createTenantRegistry(rootDir) {
   return process.env.SUPABASE_URL && key ? new SupabaseTenantRegistry(process.env.SUPABASE_URL, key) : new LocalTenantRegistry(rootDir);
 }
 
-module.exports = { createTenantRegistry, LocalTenantRegistry, SupabaseTenantRegistry, normalizeSlug, hashPassword, verifyPassword, canAcceptOrders, TRIAL_DAYS };
+module.exports = { createTenantRegistry, LocalTenantRegistry, SupabaseTenantRegistry, normalizeSlug, hashPassword, verifyPassword, canAcceptOrders, planCapabilities, hasPlanFeature, retentionPolicy, PLAN_FEATURES, TRIAL_DAYS };
