@@ -200,7 +200,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
     const settings = await store.getSettings();
     if (!settings.merchant_line_user_id) return;
     const customer = order.customer_name || 'LINE 客戶';
-    const details = [order.phone, order.pickup_time, order.note].filter(Boolean).join(' · ');
+    const details = [order.phone, order.fulfillment, order.pickup_time, order.note].filter(Boolean).join(' · ');
     const statusButton = (label, status, color) => ({
       type: 'button', style: 'primary', color, height: 'sm', margin: 'sm',
       action: {

@@ -3,6 +3,16 @@ const path = require('path');
 const crypto = require('crypto');
 
 const MERCHANT_ID = process.env.MERCHANT_ID || 'default-store';
+const DEFAULT_CHECKOUT_FIELDS = {
+  customer_name: { label: '取貨人姓名', enabled: true, required: true },
+  phone: { label: '聯絡電話', enabled: true, required: true },
+  pickup_time: { label: '希望取貨時間', enabled: true, required: false },
+  note: { label: '備註', enabled: true, required: false }
+};
+const DEFAULT_FULFILLMENT_OPTIONS = [
+  { id: 'pickup', label: '到店取貨', enabled: true },
+  { id: 'delivery', label: '外送', enabled: true }
+];
 
 function createClaimCode() {
   return crypto.randomBytes(8).toString('hex').toUpperCase();
@@ -26,8 +36,35 @@ const DEFAULT_SETTINGS = {
   bank_code: '',
   bank_account: '',
   bank_account_name: '',
-  payment_instructions: ''
+  payment_instructions: '',
+  checkout_fields: DEFAULT_CHECKOUT_FIELDS,
+  fulfillment_options: DEFAULT_FULFILLMENT_OPTIONS
 };
+
+function normalizeCheckoutFields(input, existing = DEFAULT_CHECKOUT_FIELDS) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : existing;
+  return Object.fromEntries(Object.entries(DEFAULT_CHECKOUT_FIELDS).map(([key, defaults]) => {
+    const current = source?.[key] || existing?.[key] || defaults;
+    const label = String(current.label || defaults.label).trim().slice(0, 40) || defaults.label;
+    const enabled = current.enabled !== false;
+    return [key, { label, enabled, required: enabled && current.required === true }];
+  }));
+}
+
+function normalizeFulfillmentOptions(input, existing = DEFAULT_FULFILLMENT_OPTIONS) {
+  const source = Array.isArray(input) ? input : (Array.isArray(existing) ? existing : DEFAULT_FULFILLMENT_OPTIONS);
+  const used = new Set();
+  const options = source.slice(0, 12).map((item, index) => {
+    const fallbackId = `method_${index + 1}`;
+    let id = String(item?.id || fallbackId).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40) || fallbackId;
+    while (used.has(id)) id = `${id}_${index + 1}`.slice(0, 40);
+    used.add(id);
+    return { id, label: String(item?.label || '').trim().slice(0, 40), enabled: item?.enabled !== false };
+  }).filter(item => item.label);
+  if (!options.length) return DEFAULT_FULFILLMENT_OPTIONS.map(item => ({ ...item }));
+  if (!options.some(item => item.enabled)) options[0].enabled = true;
+  return options;
+}
 
 function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS) {
   const text = (value, fallback, max) => String(value ?? fallback ?? '').trim().slice(0, max);
@@ -51,6 +88,8 @@ function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS) {
     bank_account: text(input.bank_account, existing.bank_account, 60),
     bank_account_name: text(input.bank_account_name, existing.bank_account_name, 80),
     payment_instructions: text(input.payment_instructions, existing.payment_instructions, 300),
+    checkout_fields: normalizeCheckoutFields(input.checkout_fields, existing.checkout_fields),
+    fulfillment_options: normalizeFulfillmentOptions(input.fulfillment_options, existing.fulfillment_options),
     updated_at: new Date().toISOString()
   };
 }
@@ -380,4 +419,4 @@ function createStore(rootDir, seedProducts = []) {
   return new LocalStore(path.join(rootDir, 'data'), seedProducts);
 }
 
-module.exports = { createStore, LocalStore, SupabaseStore, normalizeProduct, normalizeSettings, DEFAULT_SETTINGS };
+module.exports = { createStore, LocalStore, SupabaseStore, normalizeProduct, normalizeSettings, DEFAULT_SETTINGS, DEFAULT_CHECKOUT_FIELDS, DEFAULT_FULFILLMENT_OPTIONS };

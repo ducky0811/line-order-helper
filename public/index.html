@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260621-1">
 </head>
 <body>
   <main class="shell">
@@ -50,6 +50,16 @@
           <label>店家介紹<textarea id="storeDescription" rows="3" maxlength="240"></textarea></label>
           <div class="two-col"><label>聯絡電話<input id="storePhone" maxlength="40"></label><label>營業時間<input id="businessHours" maxlength="180" placeholder="每日 11:00–20:00"></label></div>
           <label>店家地址<input id="storeAddress" maxlength="180"></label>
+          <h3>客戶訂購資料</h3>
+          <p class="field-help">勾選「顯示」的欄位才會出現在客戶結帳頁；勾選「必填」後客戶必須填寫。</p>
+          <div class="checkout-field-list">
+            <div class="checkout-field-row" data-field="customer_name"><input data-role="label" maxlength="40"><label class="compact-switch"><input data-role="enabled" type="checkbox">顯示</label><label class="compact-switch"><input data-role="required" type="checkbox">必填</label></div>
+            <div class="checkout-field-row" data-field="phone"><input data-role="label" maxlength="40"><label class="compact-switch"><input data-role="enabled" type="checkbox">顯示</label><label class="compact-switch"><input data-role="required" type="checkbox">必填</label></div>
+            <div class="checkout-field-row" data-field="pickup_time"><input data-role="label" maxlength="40"><label class="compact-switch"><input data-role="enabled" type="checkbox">顯示</label><label class="compact-switch"><input data-role="required" type="checkbox">必填</label></div>
+            <div class="checkout-field-row" data-field="note"><input data-role="label" maxlength="40"><label class="compact-switch"><input data-role="enabled" type="checkbox">顯示</label><label class="compact-switch"><input data-role="required" type="checkbox">必填</label></div>
+          </div>
+          <div class="settings-heading"><div><h3>客戶取貨方式</h3><p class="field-help">可以新增、改名或取消顯示；至少需保留一個啟用項目。</p></div><button id="addFulfillmentOption" type="button" class="ghost">＋ 新增方式</button></div>
+          <div id="fulfillmentOptions" class="fulfillment-option-list"></div>
           <h3>付款方式</h3>
           <div class="two-col"><label class="switch"><input id="cashEnabled" type="checkbox"><span>開放現金取貨</span></label><label class="switch"><input id="bankTransferEnabled" type="checkbox"><span>開放銀行轉帳</span></label></div>
           <div class="two-col"><label>銀行名稱<input id="bankName" maxlength="80" placeholder="例如：台灣銀行"></label><label>銀行代碼<input id="bankCode" maxlength="20" inputmode="numeric" placeholder="例如：004"></label></div>
@@ -80,6 +90,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js" defer></script>
+  <script src="/admin/app.js?v=20260621-1" defer></script>
 </body>
 </html>

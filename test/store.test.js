@@ -49,6 +49,19 @@ test('店家可以更新品牌資料與暫停接單', async () => {
   assert.equal((await store.getSettings()).accepting_orders, false);
 });
 
+test('店家可以設定訂購欄位與自訂取貨方式', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-checkout-settings-'));
+  const store = new LocalStore(dir);
+  await store.init();
+  const settings = await store.updateSettings({
+    checkout_fields: { phone: { label: '手機號碼', enabled: true, required: true } },
+    fulfillment_options: [{ id: 'cold_delivery', label: '冷藏宅配', enabled: true }, { id: 'pickup', label: '自取', enabled: false }]
+  });
+  assert.equal(settings.checkout_fields.phone.label, '手機號碼');
+  assert.equal(settings.fulfillment_options[0].label, '冷藏宅配');
+  assert.equal(settings.fulfillment_options[1].enabled, false);
+});
+
 test('銀行轉帳可回填末五碼並確認收款', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-payment-'));
   const store = new LocalStore(dir);

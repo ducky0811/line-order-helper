@@ -53,6 +53,8 @@ create table if not exists public.store_settings (
   bank_account text not null default '',
   bank_account_name text not null default '',
   payment_instructions text not null default '',
+  checkout_fields jsonb not null default '{"customer_name":{"label":"取貨人姓名","enabled":true,"required":true},"phone":{"label":"聯絡電話","enabled":true,"required":true},"pickup_time":{"label":"希望取貨時間","enabled":true,"required":false},"note":{"label":"備註","enabled":true,"required":false}}'::jsonb,
+  fulfillment_options jsonb not null default '[{"id":"pickup","label":"到店取貨","enabled":true},{"id":"delivery","label":"外送","enabled":true}]'::jsonb,
   updated_at timestamptz not null default now()
 );
 
@@ -84,6 +86,8 @@ alter table public.store_settings add column if not exists bank_code text not nu
 alter table public.store_settings add column if not exists bank_account text not null default '';
 alter table public.store_settings add column if not exists bank_account_name text not null default '';
 alter table public.store_settings add column if not exists payment_instructions text not null default '';
+alter table public.store_settings add column if not exists checkout_fields jsonb not null default '{"customer_name":{"label":"取貨人姓名","enabled":true,"required":true},"phone":{"label":"聯絡電話","enabled":true,"required":true},"pickup_time":{"label":"希望取貨時間","enabled":true,"required":false},"note":{"label":"備註","enabled":true,"required":false}}'::jsonb;
+alter table public.store_settings add column if not exists fulfillment_options jsonb not null default '[{"id":"pickup","label":"到店取貨","enabled":true},{"id":"delivery","label":"外送","enabled":true}]'::jsonb;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('product-images', 'product-images', true, 2097152, array['image/jpeg','image/png','image/webp'])
