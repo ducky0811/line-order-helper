@@ -4,8 +4,8 @@ function createSheetsService() {
   const email = process.env.GOOGLE_CLIENT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY;
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-  if (!email || !rawKey || !spreadsheetId) {
-    console.warn('⚠️ 未配置完整 Google Sheets 變數');
+  if (!email || !rawKey) {
+    console.warn('⚠️ 未配置 Google Sheets 服務帳號 Email 或 Private Key');
     return { available: false, serviceAccountEmail: email || '', saveOrder: async () => null, verify: async () => { throw new Error('系統尚未設定 Google Sheets 服務帳號'); } };
   }
 
@@ -36,6 +36,7 @@ function createSheetsService() {
     },
     async saveOrder(order, config = {}) {
       const targetId = config.spreadsheet_id || spreadsheetId;
+      if (!targetId) return null;
       const targetSheet = config.sheet_name || process.env.GOOGLE_SHEET_NAME || 'Sheet1';
       await client.spreadsheets.values.append({
         spreadsheetId: targetId,
