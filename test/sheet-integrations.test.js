@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const { LocalSheetIntegrationStore, spreadsheetId, publicSheetIntegration } = require('../src/sheet-integrations');
 const { planCapabilities, retentionPolicy } = require('../src/tenants');
+const { friendlySheetsError } = require('../src/app');
 
 test('每間店的 Google 試算表設定互不相通', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sheet-integrations-'));
@@ -24,4 +25,11 @@ test('基本版與專業版權限及保存時間正確', () => {
   const policy = retentionPolicy({ plan: 'trial', trial_ends_at: '2026-01-15T00:00:00.000Z', expires_at: '2026-01-15T00:00:00.000Z' }, new Date('2026-01-20T00:00:00.000Z'));
   assert.equal(policy.delete_at, '2026-02-14T00:00:00.000Z');
   assert.equal(policy.purge_before, null);
+});
+
+test('Google 試算表錯誤會顯示可操作的中文原因', () => {
+  assert.match(friendlySheetsError(new Error('找不到名為「訂單」的工作表')), /找不到名為/);
+  assert.match(friendlySheetsError(new Error('The caller does not have permission 403')), /編輯權限/);
+  assert.match(friendlySheetsError(new Error('Google Sheets API has not been used or is disabled')), /尚未啟用/);
+  assert.match(friendlySheetsError(new Error('error: DECODER routines unsupported')), /金鑰/);
 });

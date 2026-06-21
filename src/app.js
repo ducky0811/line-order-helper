@@ -24,6 +24,16 @@ function getPlatformSalesUrl() {
   return value.startsWith('/') || /^https:\/\//i.test(value) ? value : '/admin/';
 }
 
+function friendlySheetsError(reason) {
+  const message = String(reason?.message || reason || '');
+  if (/找不到名為/.test(message)) return message;
+  if (/has not been used|is disabled|SERVICE_DISABLED/i.test(message)) return 'Google Sheets API 尚未啟用，請到 Google Cloud 啟用 Google Sheets API 後再試';
+  if (/DECODER|private key|invalid_grant|unauthorized_client|invalid_client/i.test(message)) return 'Google 服務帳號金鑰無法使用，請檢查 Zeabur 的 GOOGLE_CLIENT_EMAIL 與 GOOGLE_PRIVATE_KEY';
+  if (/403|permission|forbidden|caller does not have permission/i.test(message)) return '服務帳號沒有編輯權限，請在試算表右上角「共用」中設為編輯者';
+  if (/404|not found|requested entity was not found/i.test(message)) return '找不到這份試算表，請重新複製瀏覽器上方的完整網址';
+  return 'Google 試算表連線失敗，請確認共用帳號、編輯者權限與工作表名稱';
+}
+
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
   const app = express();
@@ -231,7 +241,7 @@ async function createApp(options = {}) {
   admin.get('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.json({ legacy: true, enabled: Boolean(process.env.CHANNEL_ACCESS_TOKEN), configured: Boolean(process.env.CHANNEL_ACCESS_TOKEN && process.env.CHANNEL_SECRET), official_account_id: process.env.LINE_OFFICIAL_ACCOUNT_ID || '', webhook_url: `${String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')}/webhook` }); if (!hasPlanFeature(req.merchant, 'line')) return res.json({ locked: true, required_plan: 'pro', enabled: false }); const safe = publicIntegration(await lineIntegrations.get(req.merchantId), process.env.PUBLIC_BASE_URL || ''); const settings = await req.store.getSettings(); res.json({ ...safe, bound: Boolean(settings.merchant_line_user_id) }); } catch (error) { next(error); } });
   admin.put('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 LINE 環境變數' }); if (!hasPlanFeature(req.merchant, 'line')) return res.status(403).json({ error: 'LINE 自動通知為專業版功能' }); const row = await lineIntegrations.save(req.merchantId, req.body || {}); tenantBots.delete(req.merchantId); if (row.enabled) { try { const connected = await getTenantBot(req.merchantId, true); await connected.bot.verifyConnection(); } catch (reason) { await lineIntegrations.save(req.merchantId, { enabled: false }); tenantBots.delete(req.merchantId); const error = new Error('LINE Channel Access Token 驗證失敗，已保持停用，請檢查後重試'); error.status = 400; throw error; } } res.json(publicIntegration(row, process.env.PUBLIC_BASE_URL || '')); } catch (error) { next(error); } });
   admin.get('/sheets-integration', async (req, res, next) => { try { if (!req.merchant) return res.json({ legacy: true, enabled: sheets.available, service_account_email: sheets.serviceAccountEmail || '' }); if (!hasPlanFeature(req.merchant, 'sheets')) return res.json({ locked: true, required_plan: 'pro', enabled: false }); res.json(publicSheetIntegration(await sheetIntegrations.get(req.merchantId), sheets.serviceAccountEmail)); } catch (error) { next(error); } });
-  admin.put('/sheets-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 Google Sheets 環境變數' }); if (!hasPlanFeature(req.merchant, 'sheets')) return res.status(403).json({ error: 'Google 試算表同步為專業版功能' }); const row = await sheetIntegrations.save(req.merchantId, req.body || {}); if (row.enabled) { try { await sheets.verify(row); } catch (reason) { await sheetIntegrations.save(req.merchantId, { enabled: false }); const error = new Error('無法開啟這份試算表，請確認已把服務帳號設為編輯者，且工作表名稱正確'); error.status = 400; throw error; } } res.json(publicSheetIntegration(row, sheets.serviceAccountEmail)); } catch (error) { next(error); } });
+  admin.put('/sheets-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 Google Sheets 環境變數' }); if (!hasPlanFeature(req.merchant, 'sheets')) return res.status(403).json({ error: 'Google 試算表同步為專業版功能' }); const row = await sheetIntegrations.save(req.merchantId, req.body || {}); if (row.enabled) { try { await sheets.verify(row); } catch (reason) { console.error('❌ Google 試算表驗證失敗：', reason?.message || reason); await sheetIntegrations.save(req.merchantId, { enabled: false }); const error = new Error(friendlySheetsError(reason)); error.status = 400; throw error; } } res.json(publicSheetIntegration(row, sheets.serviceAccountEmail)); } catch (error) { next(error); } });
   admin.get('/products', async (req, res, next) => {
     try { res.json(await req.store.listProducts()); } catch (error) { next(error); }
   });
@@ -283,4 +293,4 @@ async function createApp(options = {}) {
   return { app, store, bot, tenantRegistry, getStore, lineIntegrations, sheetIntegrations, getTenantBot };
 }
 
-module.exports = { createApp, createLineConfirmUrl };
+module.exports = { createApp, createLineConfirmUrl, friendlySheetsError };
