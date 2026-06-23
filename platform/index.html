@@ -1,8 +1,8 @@
 <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172038"><title>接單小幫手｜平台管理</title><link rel="stylesheet" href="/platform/styles.css?v=1"></head><body>
 <main class="shell">
   <section id="loginView" class="login-card"><div class="mark">管</div><span class="eyebrow">接單小幫手</span><h1>平台管理員登入</h1><p>此入口只供平台擁有者使用。</p><form id="loginForm"><label>平台管理密碼<input id="password" type="password" autocomplete="current-password" required></label><button>登入平台後台</button></form><p id="loginError" class="error"></p></section>
-  <section id="dashboard" hidden><header><div><span class="eyebrow">平台管理後台</span><h1>店家與方案管理</h1><p>查看試用狀態、開通方案、延長期限或暫停商店。</p></div><button id="logout" class="ghost">登出</button></header>
+  <section id="dashboard" hidden><header><div><span class="eyebrow">平台管理後台</span><h1>店家與方案管理</h1><p>依「正在使用、沒有在使用、新客戶」管理店家，方便追蹤誰已開通、誰要付款、誰只是歷史資料。</p></div><button id="logout" class="ghost">登出</button></header>
     <div id="stats" class="stats"></div>
-    <section class="panel"><div class="toolbar"><label>搜尋店家<input id="search" type="search" placeholder="店名、Email 或商店代碼"></label><label>篩選方案<select id="planFilter"><option value="all">全部方案</option><option value="trial">免費試用</option><option value="basic">基本版</option><option value="pro">專業版</option><option value="suspended">已停權</option></select></label><button id="refresh" class="ghost">重新整理</button></div><div id="merchantList" class="merchant-list"></div></section>
+    <section class="panel"><div class="toolbar"><label>搜尋店家<input id="search" type="search" placeholder="店名、Email 或商店代碼"></label><label>客戶狀態<select id="customerFilter"><option value="all">全部客戶</option><option value="active">正在使用</option><option value="new">新客戶（試用／未付款）</option><option value="inactive">沒有在使用（歷史客戶）</option></select></label><button id="refresh" class="ghost">重新整理</button></div><div id="merchantList" class="merchant-list"></div></section>
   </section>
-</main><div id="toast"></div><script src="/platform/app.js?v=2" defer></script></body></html>
+</main><div id="toast"></div><script src="/platform/app.js?v=3" defer></script></body></html>
