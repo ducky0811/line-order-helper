@@ -33,3 +33,26 @@ test('結帳欄位與取貨方式依店家設定驗證', async () => {
   assert.equal(order.note, '');
   assert.equal(order.fulfillment, '冷藏宅配');
 });
+
+test('客製詢價商品會建立待報價訂單', async () => {
+  const store = {
+    listProducts: async () => [{ id: 'custom-cake', name: '客製蛋糕', price: 0, product_type: 'quote', active: true }],
+    getSettings: async () => ({
+      checkout_fields: {
+        customer_name: { label: '姓名', enabled: true, required: true },
+        phone: { label: '電話', enabled: true, required: true },
+        pickup_time: { label: '交付時間', enabled: true, required: false },
+        note: { label: '備註', enabled: true, required: false }
+      },
+      fulfillment_options: [{ id: 'pickup', label: '到店取貨', enabled: true }],
+      cash_enabled: true,
+      bank_transfer_enabled: true
+    })
+  };
+  const order = await buildOrder(store, { customer_name: '客戶', phone: '0900', fulfillment: 'pickup', quote_request: '想要粉色生日蛋糕，預算 1500', items: [{ product_id: 'custom-cake', quantity: 1 }] });
+  assert.equal(order.payment_method, 'quote');
+  assert.equal(order.quote_status, 'requested');
+  assert.equal(order.total, 0);
+  assert.match(order.summary, /待報價/);
+  await assert.rejects(() => buildOrder(store, { customer_name: '客戶', phone: '0900', items: [{ product_id: 'custom-cake', quantity: 1 }] }), /客製需求/);
+});

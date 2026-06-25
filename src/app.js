@@ -67,7 +67,7 @@ function isOrderInRange(order, range = 'month') {
 }
 
 function completedRevenueOrders(orders) {
-  return orders.filter(order => order.status !== 'cancelled');
+  return orders.filter(order => order.status !== 'cancelled' && order.quote_status !== 'requested');
 }
 
 function buildSalesReport(orders, range = 'month') {
@@ -78,7 +78,7 @@ function buildSalesReport(orders, range = 'month') {
   const cancelledOrders = scoped.filter(order => order.status === 'cancelled');
   const sum = rows => rows.reduce((total, order) => total + Number(order.total || 0), 0);
   const byPayment = scoped.reduce((result, order) => {
-    const key = order.payment_method === 'bank_transfer' ? 'bank_transfer' : 'cash';
+    const key = order.payment_method === 'bank_transfer' ? 'bank_transfer' : order.payment_method === 'quote' ? 'quote' : 'cash';
     result[key] = (result[key] || 0) + Number(order.total || 0);
     return result;
   }, {});
@@ -106,7 +106,7 @@ function csvCell(value) {
 }
 
 function orderCsv(orders) {
-  const headers = ['訂單日期', '訂單編號', '姓名', '電話', '商品明細', '訂單金額', '付款方式', '付款狀態', '匯款末五碼', '取貨方式', '取貨時間', '訂單狀態', '備註'];
+  const headers = ['訂單日期', '訂單編號', '姓名', '電話', '商品明細', '訂單金額', '付款方式', '付款狀態', '詢價狀態', '客製需求', '報價說明', '匯款末五碼', '取貨方式', '取貨時間', '訂單狀態', '備註'];
   const statusText = { new: '新訂單', confirmed: '已確認', preparing: '製作中', ready: '可取貨', completed: '已完成', cancelled: '已取消' };
   const paymentText = { unpaid: '未付款', pending: '待核對', paid: '已付款', refunded: '已退款' };
   const paymentMethodText = { cash: '現金取貨', bank_transfer: '銀行轉帳' };
@@ -121,6 +121,9 @@ function orderCsv(orders) {
       order.total || 0,
       paymentMethodText[order.payment_method] || order.payment_method || '',
       paymentText[order.payment_status] || order.payment_status || '',
+      order.quote_status === 'requested' ? '待報價' : order.quote_status === 'quoted' ? '已報價' : '',
+      order.quote_request || '',
+      order.quote_note || '',
       order.transfer_last5 || '',
       order.fulfillment || '',
       order.pickup_time || '',
@@ -278,6 +281,8 @@ async function createApp(options = {}) {
         total: order.total,
         status: order.status,
         claim_code: order.claim_code,
+        quote_required: order.quote_status === 'requested',
+        quote_status: order.quote_status || 'none',
         line_confirm_url: createLineConfirmUrl(order, req.merchantId === DEFAULT_MERCHANT_ID ? process.env.LINE_OFFICIAL_ACCOUNT_ID : tenantLine?.config.officialAccountId),
         tracking_url: `/track/?store=${encodeURIComponent(req.merchant?.slug || DEFAULT_MERCHANT_ID)}&code=${encodeURIComponent(order.claim_code || '')}`
         ,payment_method: order.payment_method,
@@ -304,7 +309,11 @@ async function createApp(options = {}) {
         claimed: Boolean(order.line_user_id)
         ,payment_method: order.payment_method,
         payment_status: order.payment_status,
-        transfer_last5: order.transfer_last5 || ''
+        transfer_last5: order.transfer_last5 || '',
+        quote_status: order.quote_status || 'none',
+        quote_amount: order.quote_amount,
+        quote_note: order.quote_note || '',
+        quote_request: order.quote_request || ''
       });
     } catch (error) { next(error); }
   });
@@ -423,6 +432,12 @@ async function createApp(options = {}) {
       if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyPaymentStatus) {
         await bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error));
       } else if (req.merchantId !== DEFAULT_MERCHANT_ID && hasPlanFeature(req.merchant, 'line')) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyPaymentStatus) await tenantLine.bot.notifyPaymentStatus(order).catch(error => console.error('❌ LINE 付款通知失敗：', error)); }
+      res.json(order);
+    } catch (error) { next(error); }
+  });
+  admin.patch('/orders/:id/quote', async (req, res, next) => {
+    try {
+      const order = await req.store.updateOrderQuote(req.params.id, req.body || {});
       res.json(order);
     } catch (error) { next(error); }
   });

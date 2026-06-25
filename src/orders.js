@@ -10,6 +10,7 @@ async function buildOrder(store, input = {}) {
 
   for (const row of requested) {
     const product = products.find(item => item.id === row.product_id);
+    const isQuoteProduct = product?.product_type === 'quote';
     const quantity = Number(row.quantity);
     if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) continue;
     if (product.stock != null && quantity > product.stock) {
@@ -18,13 +19,16 @@ async function buildOrder(store, input = {}) {
     items.push({
       product_id: product.id,
       name: product.name,
-      price: Number(product.price),
+      product_type: isQuoteProduct ? 'quote' : 'fixed',
+      price: isQuoteProduct ? 0 : Number(product.price),
       quantity,
-      subtotal: Number(product.price) * quantity
+      subtotal: isQuoteProduct ? 0 : Number(product.price) * quantity
     });
   }
 
   if (!items.length) throw new Error('購物車沒有可結帳的商品');
+  const quoteRequired = items.some(item => item.product_type === 'quote');
+  if (quoteRequired && items.some(item => item.product_type !== 'quote')) throw new Error('客製詢價商品請獨立送出需求，不要與固定商品一起結帳');
   const fields = settings.checkout_fields || {};
   const customerName = cleanText(input.customer_name, 60);
   const phone = cleanText(input.phone, 30);
@@ -40,10 +44,12 @@ async function buildOrder(store, input = {}) {
   const enabledMethods = [];
   if (settings.cash_enabled) enabledMethods.push('cash');
   if (settings.bank_transfer_enabled) enabledMethods.push('bank_transfer');
-  if (!enabledMethods.length) throw new Error('店家尚未開放付款方式');
-  const paymentMethod = enabledMethods.includes(input.payment_method) ? input.payment_method : enabledMethods[0];
-  if (paymentMethod === 'bank_transfer' && !settings.bank_account) throw new Error('店家尚未設定銀行帳號');
+  if (!quoteRequired && !enabledMethods.length) throw new Error('店家尚未開放付款方式');
+  const paymentMethod = quoteRequired ? 'quote' : (enabledMethods.includes(input.payment_method) ? input.payment_method : enabledMethods[0]);
+  if (!quoteRequired && paymentMethod === 'bank_transfer' && !settings.bank_account) throw new Error('店家尚未設定銀行帳號');
   const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+  const quoteRequest = cleanText(input.quote_request, 600);
+  if (quoteRequired && !quoteRequest) throw new Error('請填寫客製需求，方便店家報價');
 
   return {
     line_user_id: cleanText(input.line_user_id, 100) || null,
@@ -53,8 +59,12 @@ async function buildOrder(store, input = {}) {
     pickup_time: fields.pickup_time?.enabled === false ? '' : pickupTime,
     note: fields.note?.enabled === false ? '' : note,
     payment_method: paymentMethod,
+    quote_status: quoteRequired ? 'requested' : 'none',
+    quote_request: quoteRequired ? quoteRequest : '',
+    quote_amount: null,
+    quote_note: '',
     items,
-    summary: items.map(item => `${item.name}x${item.quantity}`).join('、'),
+    summary: items.map(item => `${item.name}x${item.quantity}${item.product_type === 'quote' ? '（待報價）' : ''}`).join('、'),
     total
   };
 }

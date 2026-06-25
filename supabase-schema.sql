@@ -3,6 +3,8 @@ create table if not exists public.products (
   merchant_id text not null,
   name text not null,
   price numeric not null check (price >= 0),
+  product_type text not null default 'fixed',
+  quote_prompt text not null default '',
   description text not null default '',
   image_url text not null default '',
   active boolean not null default true,
@@ -64,6 +66,11 @@ create table if not exists public.orders (
   note text not null default '',
   payment_method text not null default 'cash',
   payment_status text not null default 'unpaid',
+  quote_status text not null default 'none',
+  quote_request text not null default '',
+  quote_amount numeric,
+  quote_note text not null default '',
+  quoted_at timestamptz,
   transfer_last5 text not null default '',
   paid_at timestamptz,
   items jsonb not null default '[]'::jsonb,
@@ -120,8 +127,15 @@ alter table public.orders add column if not exists claim_code text unique;
 alter table public.orders add column if not exists claimed_at timestamptz;
 alter table public.orders add column if not exists payment_method text not null default 'cash';
 alter table public.orders add column if not exists payment_status text not null default 'unpaid';
+alter table public.orders add column if not exists quote_status text not null default 'none';
+alter table public.orders add column if not exists quote_request text not null default '';
+alter table public.orders add column if not exists quote_amount numeric;
+alter table public.orders add column if not exists quote_note text not null default '';
+alter table public.orders add column if not exists quoted_at timestamptz;
 alter table public.orders add column if not exists transfer_last5 text not null default '';
 alter table public.orders add column if not exists paid_at timestamptz;
+alter table public.products add column if not exists product_type text not null default 'fixed';
+alter table public.products add column if not exists quote_prompt text not null default '';
 alter table public.store_settings add column if not exists merchant_line_user_id text not null default '';
 alter table public.store_settings add column if not exists cash_enabled boolean not null default true;
 alter table public.store_settings add column if not exists bank_transfer_enabled boolean not null default true;

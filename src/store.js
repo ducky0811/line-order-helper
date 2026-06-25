@@ -96,14 +96,17 @@ function normalizeSettings(input = {}, existing = DEFAULT_SETTINGS, merchantId =
 
 function normalizeProduct(input, existing = {}, merchantId = DEFAULT_MERCHANT_ID) {
   const price = Number(input.price);
+  const productType = input.product_type === 'quote' ? 'quote' : 'fixed';
   if (!String(input.name || '').trim()) throw new Error('商品名稱不能空白');
-  if (!Number.isFinite(price) || price < 0) throw new Error('商品價格格式不正確');
+  if (productType === 'fixed' && (!Number.isFinite(price) || price < 0)) throw new Error('商品價格格式不正確');
   return {
     ...existing,
     id: existing.id || input.id || crypto.randomUUID(),
     merchant_id: merchantId,
     name: String(input.name).trim(),
-    price,
+    price: productType === 'quote' ? 0 : price,
+    product_type: productType,
+    quote_prompt: String(input.quote_prompt || '').trim().slice(0, 240),
     description: String(input.description || '').trim(),
     image_url: String(input.image_url || input.image || '').trim(),
     active: input.active !== false,
@@ -199,6 +202,11 @@ class LocalStore {
       note: input.note || '',
       payment_method: input.payment_method || 'cash',
       payment_status: 'unpaid',
+      quote_status: input.quote_status || 'none',
+      quote_request: input.quote_request || '',
+      quote_amount: input.quote_amount == null ? null : Number(input.quote_amount),
+      quote_note: input.quote_note || '',
+      quoted_at: input.quoted_at || null,
       transfer_last5: '',
       paid_at: null,
       items: input.items,
@@ -278,6 +286,22 @@ class LocalStore {
     return order;
   }
 
+  async updateOrderQuote(id, input = {}) {
+    const amount = Number(input.quote_amount);
+    if (!Number.isFinite(amount) || amount < 0) throw new Error('報價金額格式不正確');
+    const orders = await this.listOrders();
+    const order = orders.find(item => item.id === id);
+    if (!order) throw new Error('找不到訂單');
+    order.quote_status = 'quoted';
+    order.quote_amount = amount;
+    order.quote_note = String(input.quote_note || '').trim().slice(0, 300);
+    order.total = amount;
+    order.quoted_at = new Date().toISOString();
+    order.updated_at = new Date().toISOString();
+    await this.writeJson(this.ordersFile, orders);
+    return order;
+  }
+
   async getSettings() {
     return normalizeSettings(await this.readJson(this.settingsFile), DEFAULT_SETTINGS, this.merchantId);
   }
@@ -346,7 +370,9 @@ class SupabaseStore {
         claim_code: createClaimCode(), claimed_at: input.line_user_id ? new Date().toISOString() : null,
         customer_name: input.customer_name || '', phone: input.phone || '',
         fulfillment: input.fulfillment || 'pickup', pickup_time: input.pickup_time || '', note: input.note || '',
-        payment_method: input.payment_method || 'cash', payment_status: 'unpaid', transfer_last5: '', paid_at: null,
+        payment_method: input.payment_method || 'cash', payment_status: 'unpaid',
+        quote_status: input.quote_status || 'none', quote_request: input.quote_request || '', quote_amount: input.quote_amount == null ? null : Number(input.quote_amount), quote_note: input.quote_note || '', quoted_at: input.quoted_at || null,
+        transfer_last5: '', paid_at: null,
         items: input.items, summary: input.summary, total: Number(input.total), status: 'new'
       })
     });
@@ -404,6 +430,17 @@ class SupabaseStore {
     const rows = await this.request(`orders?id=eq.${encodeURIComponent(id)}&merchant_id=eq.${encodeURIComponent(this.merchantId)}`, {
       method: 'PATCH',
       body: JSON.stringify({ payment_status: status, paid_at: status === 'paid' ? new Date().toISOString() : null, updated_at: new Date().toISOString() })
+    });
+    if (!rows[0]) throw new Error('找不到訂單');
+    return rows[0];
+  }
+
+  async updateOrderQuote(id, input = {}) {
+    const amount = Number(input.quote_amount);
+    if (!Number.isFinite(amount) || amount < 0) throw new Error('報價金額格式不正確');
+    const rows = await this.request(`orders?id=eq.${encodeURIComponent(id)}&merchant_id=eq.${encodeURIComponent(this.merchantId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quote_status: 'quoted', quote_amount: amount, quote_note: String(input.quote_note || '').trim().slice(0, 300), total: amount, quoted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     });
     if (!rows[0]) throw new Error('找不到訂單');
     return rows[0];

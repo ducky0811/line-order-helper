@@ -25,8 +25,10 @@ async function load(){
     const response=await fetch(`/api/shop/orders/${encodeURIComponent(code)}/status`,{cache:'no-store',headers:shopHeaders});
     const order=await response.json();
     if(!response.ok)throw new Error(order.error||'查詢失敗');
+    const isQuote=order.quote_status==='requested'||order.quote_status==='quoted';
     const paymentForm=order.payment_method==='bank_transfer'&&!['paid','refunded'].includes(order.payment_status)?`<form id="paymentForm"><label>匯款帳號末五碼<input id="last5" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" value="${escapeHtml(order.transfer_last5||'')}" required></label><button type="submit">送出末五碼</button><p id="paymentError" class="error"></p></form>`:'';
-    document.querySelector('#content').innerHTML=`<div class="number">#${escapeHtml(order.id.slice(0,8))}</div><p class="summary">${escapeHtml(order.summary)}</p><p class="price">NT$ ${Number(order.total).toLocaleString('zh-TW')}</p><p><span class="status">${escapeHtml(statusText[order.status]||order.status)}</span> <span class="payment">${escapeHtml(paymentText[order.payment_status]||order.payment_status)}</span></p><p class="line-ok">${order.claimed?'✓ 已連結 LINE 訂單通知':'尚未連結 LINE 通知'}</p>${paymentForm}`;
+    const quoteBlock=isQuote?`<p class="summary">詢價狀態：${order.quote_status==='quoted'?'已報價':'等待店家報價'}</p>${order.quote_note?`<p>${escapeHtml(order.quote_note)}</p>`:''}`:'';
+    document.querySelector('#content').innerHTML=`<div class="number">#${escapeHtml(order.id.slice(0,8))}</div><p class="summary">${escapeHtml(order.summary)}</p><p class="price">${order.quote_status==='requested'?'待報價':`NT$ ${Number(order.total).toLocaleString('zh-TW')}`}</p>${quoteBlock}<p><span class="status">${escapeHtml(statusText[order.status]||order.status)}</span> <span class="payment">${isQuote?'客製詢價':escapeHtml(paymentText[order.payment_status]||order.payment_status)}</span></p><p class="line-ok">${order.claimed?'✓ 已連結 LINE 訂單通知':'尚未連結 LINE 通知'}</p>${paymentForm}`;
     document.querySelector('#paymentForm')?.addEventListener('submit',submitLast5);
   }catch(error){document.querySelector('#content').innerHTML=`<p>${escapeHtml(error.message)}</p>`;}
 }

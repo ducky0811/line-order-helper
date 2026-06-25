@@ -39,10 +39,15 @@ summary {
 .order-help { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
 .order-actions label { margin: 0; gap: 4px; }
 .order-actions label span { color: var(--muted); font-size: 11px; }
+.quote-box { display: grid; gap: 8px; margin: 12px 0; padding: 12px; border: 1px solid #ffe0bd; border-radius: 13px; background: #fff8ef; }
+.quote-box b { color: #9a4c11; }
+.quote-box p { margin: 0; color: #5f4a35; white-space: pre-wrap; }
+.quote-box label { margin: 0; }
+.quote-box button { justify-self: start; }
 .report-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 12px; align-items: end; margin: 14px 0 18px; }
 .report-toolbar label { margin: 0; }
 .report-toolbar label span { color: var(--muted); font-size: 12px; }
-.report-toolbar select { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #fff; color: var(--ink); }
+.report-toolbar select, #productType { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #fff; color: var(--ink); }
 .report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
 .report-card { padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: 0 12px 30px rgba(31,47,83,.05); }
 .report-card span { color: var(--muted); font-size: 12px; font-weight: 800; }

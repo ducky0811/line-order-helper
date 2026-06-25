@@ -37,7 +37,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
   }
 
   async function getProducts() {
-    return store.listProducts({ activeOnly: true });
+    return (await store.listProducts({ activeOnly: true })).filter(product => product.product_type !== 'quote');
   }
 
   function cartSummary(cart, products) {
@@ -93,14 +93,17 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
       try {
         const order = await store.claimOrder(claimCode, userId);
         const settings = await store.getSettings();
-        const paymentDetails = order.payment_method === 'bank_transfer'
+        const isQuote = order.payment_method === 'quote' || order.quote_status === 'requested';
+        const paymentDetails = isQuote
+          ? '\n\n此為客製詢價，店家報價後會再與您確認。'
+          : order.payment_method === 'bank_transfer'
           ? `\n\n🏦 匯款資料\n${settings.bank_name || ''}${settings.bank_code ? `（${settings.bank_code}）` : ''}\n帳號：${settings.bank_account || ''}\n戶名：${settings.bank_account_name || ''}${settings.payment_instructions ? `\n${settings.payment_instructions}` : ''}`
           : '\n\n付款方式：現金取貨';
         const paymentFollowup = order.payment_method === 'bank_transfer' ? '\n完成匯款後，請到訂單進度頁回填帳號末五碼。' : '';
         const trackingLink = publicBaseUrl ? `\n\n查看訂單／回填末五碼：\n${publicBaseUrl}/track/?${merchantSlug?`store=${encodeURIComponent(merchantSlug)}&`:''}code=${encodeURIComponent(order.claim_code || claimCode)}` : '';
         return reply(event.replyToken, {
           type: 'text',
-          text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n總計：${order.total} 元${paymentDetails}${paymentFollowup}${trackingLink}\n\n店家更新進度時會通知您。`
+          text: `✅ LINE 訂單確認完成！\n\n訂單編號：#${order.id.slice(0, 8)}\n${order.summary}\n${isQuote ? '金額：等待店家報價' : `總計：${order.total} 元`}${paymentDetails}${paymentFollowup}${trackingLink}\n\n店家更新進度時會通知您。`
         });
       } catch (error) {
         return reply(event.replyToken, { type: 'text', text: `❌ ${error.message}` });
@@ -212,7 +215,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
     await client.pushMessage({
       to: settings.merchant_line_user_id,
       messages: [{
-        type: 'flex', altText: `新訂單 #${order.id.slice(0, 8)}｜NT$ ${order.total}`,
+        type: 'flex', altText: `新訂單 #${order.id.slice(0, 8)}｜${order.payment_method === 'quote' || order.quote_status === 'requested' ? '客製詢價待報價' : `NT$ ${order.total}`}`,
         contents: {
           type: 'bubble',
           header: { type: 'box', layout: 'vertical', backgroundColor: '#172038', paddingAll: '18px', contents: [
@@ -221,11 +224,11 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
           ]},
           body: { type: 'box', layout: 'vertical', contents: [
             { type: 'text', text: order.summary, weight: 'bold', size: 'md', wrap: true },
-            { type: 'text', text: `NT$ ${order.total}`, color: '#f25b2b', weight: 'bold', size: 'xl', margin: 'md' },
+            { type: 'text', text: order.payment_method === 'quote' || order.quote_status === 'requested' ? '客製詢價｜待報價' : `NT$ ${order.total}`, color: '#f25b2b', weight: 'bold', size: 'xl', margin: 'md' },
             { type: 'separator', margin: 'lg' },
             { type: 'text', text: customer, margin: 'lg', weight: 'bold' },
             { type: 'text', text: details || '未填寫其他資料', color: '#73798a', size: 'sm', wrap: true, margin: 'xs' }
-            ,{ type: 'text', text: `付款：${order.payment_method === 'bank_transfer' ? '銀行轉帳' : '現金取貨'}`, color: '#73798a', size: 'sm', margin: 'xs' }
+            ,{ type: 'text', text: `付款：${order.payment_method === 'bank_transfer' ? '銀行轉帳' : order.payment_method === 'quote' ? '客製詢價' : '現金取貨'}`, color: '#73798a', size: 'sm', margin: 'xs' }
           ]},
           footer: { type: 'box', layout: 'vertical', contents: [
             statusButton('確認訂單', 'confirmed', '#2457d6'),

@@ -46,8 +46,24 @@
     </form>
   </dialog>
 
+  <dialog id="quoteDialog">
+    <form id="quoteForm">
+      <div class="dialog-title"><div><small>CUSTOM ORDER</small><h2>客製詢價</h2></div><button id="closeQuote" type="button">×</button></div>
+      <input id="quoteProductId" type="hidden">
+      <p id="quoteProductName" class="quote-product-name"></p>
+      <label>姓名<input id="quoteCustomerName" required maxlength="60" autocomplete="name"></label>
+      <label>聯絡電話<input id="quotePhone" required maxlength="30" inputmode="tel" autocomplete="tel"></label>
+      <div id="quoteFulfillmentChoices" class="choice"></div>
+      <label>希望取貨／交付時間<input id="quotePickupTime" maxlength="60" placeholder="例如：7/15 下午"></label>
+      <label>客製需求<textarea id="quoteRequest" rows="5" maxlength="600" required placeholder="請寫下尺寸、口味、顏色、數量、預算、交貨日期、想放的文字或其他需求"></textarea></label>
+      <label>備註<textarea id="quoteNote" rows="3" maxlength="300" placeholder="其他想補充給店家的內容"></textarea></label>
+      <p id="quoteError" class="error"></p>
+      <button id="submitQuote" class="primary" type="submit">送出詢價</button>
+    </form>
+  </dialog>
+
   <dialog id="successDialog" class="success-dialog"><div class="success-icon">✓</div><h2>訂單已送出</h2><p id="successText"></p><section id="paymentInfo" class="payment-info" hidden></section><section id="claimBox" class="claim-box" hidden><small>LINE 確認訊息</small><code id="claimMessage"></code><button id="copyClaim" class="copy-button" type="button">複製確認訊息</button><p>若 LINE 沒有自動帶入文字，請貼上這段訊息並送出。</p></section><a id="lineConfirm" class="primary line-confirm" href="#" hidden>開啟官方 LINE</a><a id="trackOrder" class="track-link" href="#">查看訂單進度／回填末五碼</a><button id="finishOrder" class="secondary">完成</button></dialog>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
-  <script src="/shop/app.js?v=20260621-6" defer></script>
+  <script src="/shop/app.js?v=20260625-quote-1" defer></script>
 </body>
 </html>
