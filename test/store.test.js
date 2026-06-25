@@ -74,3 +74,16 @@ test('銀行轉帳可回填末五碼並確認收款', async () => {
   assert.equal(paid.payment_status, 'paid');
   assert.ok(paid.paid_at);
 });
+
+test('訂單可保存客製溝通留言與照片', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-messages-'));
+  const store = new LocalStore(dir);
+  await store.init();
+  const order = await store.createOrder({ items: [], summary: '客製蛋糕x1', total: 0, payment_method: 'quote', quote_status: 'requested' });
+  const customer = await store.addOrderMessageByClaimCode(order.claim_code, { text: '想要粉色風格', image_url: 'https://example.com/ref.jpg' });
+  assert.equal(customer.order_messages.length, 1);
+  assert.equal(customer.order_messages[0].author, 'customer');
+  const merchant = await store.addOrderMessage(order.id, { author: 'merchant', text: '可以，預計報價 1200 元' });
+  assert.equal(merchant.order_messages.length, 2);
+  assert.equal(merchant.order_messages[1].author, 'merchant');
+});

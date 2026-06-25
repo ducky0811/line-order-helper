@@ -313,9 +313,16 @@ async function createApp(options = {}) {
         quote_status: order.quote_status || 'none',
         quote_amount: order.quote_amount,
         quote_note: order.quote_note || '',
-        quote_request: order.quote_request || ''
+        quote_request: order.quote_request || '',
+        order_messages: Array.isArray(order.order_messages) ? order.order_messages : []
       });
     } catch (error) { next(error); }
+  });
+  app.post('/api/shop/images', async (req, res, next) => {
+    try { res.status(201).json({ url: await images.upload(req.body?.data_url, req.merchantId) }); } catch (error) { next(error); }
+  });
+  app.post('/api/shop/orders/:claimCode/messages', async (req, res, next) => {
+    try { res.json(await req.store.addOrderMessageByClaimCode(req.params.claimCode, { author: 'customer', text: req.body?.text, image_url: req.body?.image_url })); } catch (error) { next(error); }
   });
   app.post('/api/shop/orders/:claimCode/payment', async (req, res, next) => {
     try {
@@ -440,6 +447,9 @@ async function createApp(options = {}) {
       const order = await req.store.updateOrderQuote(req.params.id, req.body || {});
       res.json(order);
     } catch (error) { next(error); }
+  });
+  admin.post('/orders/:id/messages', async (req, res, next) => {
+    try { res.json(await req.store.addOrderMessage(req.params.id, { author: 'merchant', text: req.body?.text, image_url: req.body?.image_url })); } catch (error) { next(error); }
   });
   app.use('/api/admin', admin);
 

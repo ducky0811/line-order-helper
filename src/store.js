@@ -208,6 +208,7 @@ class LocalStore {
       quote_amount: input.quote_amount == null ? null : Number(input.quote_amount),
       quote_note: input.quote_note || '',
       quoted_at: input.quoted_at || null,
+      order_messages: Array.isArray(input.order_messages) ? input.order_messages : [],
       transfer_last5: '',
       paid_at: null,
       items: input.items,
@@ -303,6 +304,34 @@ class LocalStore {
     return order;
   }
 
+  async addOrderMessageByClaimCode(code, input = {}) {
+    const orders = await this.listOrders();
+    const order = orders.find(item => item.claim_code === String(code || '').trim().toUpperCase());
+    if (!order) throw new Error('找不到這筆訂單');
+    return this.addOrderMessage(order.id, input, orders);
+  }
+
+  async addOrderMessage(id, input = {}, existingOrders = null) {
+    const orders = existingOrders || await this.listOrders();
+    const order = orders.find(item => item.id === id);
+    if (!order) throw new Error('找不到訂單');
+    const text = String(input.text || '').trim().slice(0, 600);
+    const imageUrl = String(input.image_url || '').trim().slice(0, 1000);
+    if (!text && !imageUrl) throw new Error('請輸入文字或上傳照片');
+    const message = {
+      id: crypto.randomUUID(),
+      author: input.author === 'merchant' ? 'merchant' : 'customer',
+      text,
+      image_url: imageUrl,
+      created_at: new Date().toISOString()
+    };
+    order.order_messages = Array.isArray(order.order_messages) ? order.order_messages : [];
+    order.order_messages.push(message);
+    order.updated_at = new Date().toISOString();
+    await this.writeJson(this.ordersFile, orders);
+    return order;
+  }
+
   async getSettings() {
     return normalizeSettings(await this.readJson(this.settingsFile), DEFAULT_SETTINGS, this.merchantId);
   }
@@ -373,6 +402,7 @@ class SupabaseStore {
         fulfillment: input.fulfillment || 'pickup', pickup_time: input.pickup_time || '', note: input.note || '',
         payment_method: input.payment_method || 'cash', payment_status: 'unpaid',
         quote_status: input.quote_status || 'none', quote_request: input.quote_request || '', quote_amount: input.quote_amount == null ? null : Number(input.quote_amount), quote_note: input.quote_note || '', quoted_at: input.quoted_at || null,
+        order_messages: Array.isArray(input.order_messages) ? input.order_messages : [],
         transfer_last5: '', paid_at: null,
         items: input.items, summary: input.summary, total: Number(input.total), status: 'new'
       })
@@ -442,6 +472,28 @@ class SupabaseStore {
     const rows = await this.request(`orders?id=eq.${encodeURIComponent(id)}&merchant_id=eq.${encodeURIComponent(this.merchantId)}`, {
       method: 'PATCH',
       body: JSON.stringify({ quote_status: 'quoted', quote_amount: amount, quote_note: String(input.quote_note || '').trim().slice(0, 300), total: amount, quoted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    });
+    if (!rows[0]) throw new Error('找不到訂單');
+    return rows[0];
+  }
+
+  async addOrderMessageByClaimCode(code, input = {}) {
+    const order = await this.findOrderByClaimCode(code);
+    if (!order) throw new Error('找不到這筆訂單');
+    return this.addOrderMessage(order.id, input, order);
+  }
+
+  async addOrderMessage(id, input = {}, existingOrder = null) {
+    const current = existingOrder || (await this.request(`orders?id=eq.${encodeURIComponent(id)}&merchant_id=eq.${encodeURIComponent(this.merchantId)}&limit=1`))[0];
+    if (!current) throw new Error('找不到訂單');
+    const text = String(input.text || '').trim().slice(0, 600);
+    const imageUrl = String(input.image_url || '').trim().slice(0, 1000);
+    if (!text && !imageUrl) throw new Error('請輸入文字或上傳照片');
+    const messages = Array.isArray(current.order_messages) ? current.order_messages : [];
+    messages.push({ id: crypto.randomUUID(), author: input.author === 'merchant' ? 'merchant' : 'customer', text, image_url: imageUrl, created_at: new Date().toISOString() });
+    const rows = await this.request(`orders?id=eq.${encodeURIComponent(id)}&merchant_id=eq.${encodeURIComponent(this.merchantId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ order_messages: messages, updated_at: new Date().toISOString() })
     });
     if (!rows[0]) throw new Error('找不到訂單');
     return rows[0];

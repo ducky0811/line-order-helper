@@ -72,6 +72,7 @@ create table if not exists public.orders (
   quote_amount numeric,
   quote_note text not null default '',
   quoted_at timestamptz,
+  order_messages jsonb not null default '[]'::jsonb,
   transfer_last5 text not null default '',
   paid_at timestamptz,
   items jsonb not null default '[]'::jsonb,
@@ -133,6 +134,7 @@ alter table public.orders add column if not exists quote_request text not null d
 alter table public.orders add column if not exists quote_amount numeric;
 alter table public.orders add column if not exists quote_note text not null default '';
 alter table public.orders add column if not exists quoted_at timestamptz;
+alter table public.orders add column if not exists order_messages jsonb not null default '[]'::jsonb;
 alter table public.orders add column if not exists transfer_last5 text not null default '';
 alter table public.orders add column if not exists paid_at timestamptz;
 alter table public.products add column if not exists product_type text not null default 'fixed';
