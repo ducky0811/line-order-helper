@@ -1,4 +1,4 @@
-const state = { token: localStorage.getItem('adminToken'), products: [], orders: [], fulfillmentOptions: [], orderView: 'active', orderStatus: 'all', orderQuery: '', activeTab: 'products', account: null, lineIntegration: null, sheetIntegration: null, lineStep: 1 };
+const state = { token: localStorage.getItem('adminToken'), products: [], orders: [], report: null, fulfillmentOptions: [], orderView: 'active', orderStatus: 'all', orderQuery: '', reportRange: 'month', activeTab: 'products', account: null, lineIntegration: null, sheetIntegration: null, lineStep: 1 };
 const $ = selector => document.querySelector(selector);
 const statusLabels = { new:'新訂單',confirmed:'已確認',preparing:'製作中',ready:'可取貨',completed:'已完成',cancelled:'已取消' };
 const paymentLabels = { unpaid:'未付款',pending:'待核對',paid:'已付款',refunded:'已退款' };
@@ -17,7 +17,7 @@ async function api(path, options = {}) {
 
 function toast(text) { const el=$('#toast'); el.textContent=text; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200); }
 function escapeHtml(value='') { return String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }
-function clearMerchantView(){state.products=[];state.orders=[];state.fulfillmentOptions=[];state.account=null;state.lineIntegration=null;state.lineStep=1;state.activeTab='products';state.orderView='active';state.orderStatus='all';state.orderQuery='';$('#productList').innerHTML='<div class="empty">正在載入這間店的商品…</div>';$('#orderList').innerHTML='<div class="empty">正在載入這間店的訂單…</div>';$('#orderSearch').value='';$('#settingsForm').reset();updateBrandPreview('logo');updateBrandPreview('hero');$('#accountSummary').textContent='';document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab==='products'));$('#productsPanel').hidden=false;$('#ordersPanel').hidden=true;$('#settingsPanel').hidden=true;document.querySelectorAll('.order-filter').forEach(button=>button.classList.toggle('active',button.dataset.view==='active'));}
+function clearMerchantView(){state.products=[];state.orders=[];state.report=null;state.fulfillmentOptions=[];state.account=null;state.lineIntegration=null;state.lineStep=1;state.activeTab='products';state.orderView='active';state.orderStatus='all';state.orderQuery='';state.reportRange='month';$('#productList').innerHTML='<div class="empty">正在載入這間店的商品…</div>';$('#orderList').innerHTML='<div class="empty">正在載入這間店的訂單…</div>';$('#reportCards').innerHTML='';$('#orderSearch').value='';$('#reportRange').value='month';$('#settingsForm').reset();updateBrandPreview('logo');updateBrandPreview('hero');$('#accountSummary').textContent='';document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab==='products'));$('#productsPanel').hidden=false;$('#ordersPanel').hidden=true;$('#reportsPanel').hidden=true;$('#settingsPanel').hidden=true;document.querySelectorAll('.order-filter').forEach(button=>button.classList.toggle('active',button.dataset.view==='active'));}
 function showApp() { clearMerchantView();$('#loginView').hidden=true; $('#registerView').hidden=true; $('#appView').hidden=false; loadProducts(); loadAccount(); }
 function logout() { localStorage.removeItem('adminToken'); state.token=null;clearMerchantView();$('#appView').hidden=true; $('#registerView').hidden=true; $('#loginView').hidden=false; }
 async function loadAccount(){try{state.account=await api('/api/admin/account');const merchant=state.account.merchant;if(!merchant){$('#accountSummary').textContent='既有測試商店';return;}const until=new Date(merchant.expires_at||merchant.trial_ends_at).toLocaleDateString('zh-TW');const retention=state.account.retention?.retention_days;$('#accountSummary').innerHTML=`方案：${escapeHtml(state.account.capabilities?.label||merchant.plan)} · 到期日：${escapeHtml(until)}${retention?` · 訂單保存 ${retention>=365?`${Math.round(retention/365)} 年`:`${retention} 天`}`:''} · <a href="${escapeHtml(state.account.shop_url)}" target="_blank">開啟商店</a>`;}catch(error){toast(error.message);}}
@@ -37,8 +37,8 @@ $('#registerForm').addEventListener('submit',async event=>{event.preventDefault(
 
 document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab===button));
-  const selected=button.dataset.tab; state.activeTab=selected; $('#productsPanel').hidden=selected!=='products'; $('#ordersPanel').hidden=selected!=='orders'; $('#settingsPanel').hidden=selected!=='settings';
-  if(selected==='orders') loadOrders(); if(selected==='settings'){loadSettings();loadLineIntegration();loadSheetsIntegration();}
+  const selected=button.dataset.tab; state.activeTab=selected; $('#productsPanel').hidden=selected!=='products'; $('#ordersPanel').hidden=selected!=='orders'; $('#reportsPanel').hidden=selected!=='reports'; $('#settingsPanel').hidden=selected!=='settings';
+  if(selected==='orders') loadOrders(); if(selected==='reports') loadReport(); if(selected==='settings'){loadSettings();loadLineIntegration();loadSheetsIntegration();}
 }));
 
 async function loadProducts() {
@@ -98,6 +98,31 @@ $('#refreshOrders').addEventListener('click',()=>loadOrders({notify:true}));
 document.querySelectorAll('.order-filter').forEach(button=>button.addEventListener('click',()=>{state.orderView=button.dataset.view;state.orderStatus='all';document.querySelectorAll('.order-filter').forEach(item=>item.classList.toggle('active',item===button));renderOrders();}));
 $('#orderSearch').addEventListener('input',event=>{state.orderQuery=event.target.value;renderOrders();});
 setInterval(()=>{if(state.token&&state.activeTab==='orders'&&!document.hidden)loadOrders();},10000);
+
+function money(value){return `NT$ ${Number(value||0).toLocaleString('zh-TW')}`;}
+async function loadReport({notify=false}={}){const button=$('#refreshReports');if(notify){button.disabled=true;button.textContent='整理中…';}try{state.report=await api(`/api/admin/reports/sales?range=${encodeURIComponent(state.reportRange)}`);renderReport();if(notify)toast('報表已重新整理');}catch(error){toast(error.message);}finally{if(notify){button.disabled=false;button.textContent='重新整理';}}}
+function renderReport(){
+  const report=state.report;if(!report){$('#reportCards').innerHTML='<div class="empty">正在載入營業報表…</div>';return;}
+  const paymentText=`現金 ${money(report.by_payment?.cash)} ／ 轉帳 ${money(report.by_payment?.bank_transfer)}`;
+  $('#reportCards').innerHTML=[
+    ['營業額',money(report.revenue),'不含已取消訂單'],
+    ['已收款',money(report.paid_revenue),'付款狀態為已付款'],
+    ['未收款',money(report.unpaid_revenue),'未付款、待核對皆列入'],
+    ['訂單數',`${report.active_orders} 筆`,`平均客單 ${money(report.average_order_value)}`],
+    ['已取消金額',money(report.cancelled_revenue),'取消訂單不列入營業額'],
+    ['付款方式',paymentText,'依訂單付款方式統計']
+  ].map(([title,value,note])=>`<article class="report-card"><span>${title}</span><strong>${value}</strong><p>${note}</p></article>`).join('');
+}
+$('#refreshReports').addEventListener('click',()=>loadReport({notify:true}));
+$('#reportRange').addEventListener('change',event=>{state.reportRange=event.target.value;loadReport();});
+$('#exportOrders').addEventListener('click',async event=>{
+  const button=event.currentTarget;button.disabled=true;const original=button.textContent;button.textContent='準備下載…';
+  try{
+    const response=await fetch(`/api/admin/reports/orders.csv?range=${encodeURIComponent(state.reportRange)}`,{headers:{Authorization:`Bearer ${state.token || ''}`}});
+    if(!response.ok){const data=await response.json().catch(()=>null);throw new Error(data?.error||'匯出失敗');}
+    const blob=await response.blob();const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`訂單匯出-${state.reportRange}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);toast('訂單表已下載');
+  }catch(error){toast(error.message);}finally{button.disabled=false;button.textContent=original;}
+});
 
 function renderCheckoutSettings(settings={}){
   document.querySelectorAll('.checkout-field-row').forEach(row=>{const config=settings.checkout_fields?.[row.dataset.field]||{};row.querySelector('[data-role="label"]').value=config.label||'';row.querySelector('[data-role="enabled"]').checked=config.enabled!==false;row.querySelector('[data-role="required"]').checked=config.required===true;});

@@ -67,6 +67,14 @@ test('管理後台可以登入並完成商品 CRUD', async () => {
     const orders = await fetch(`${base}/api/admin/orders`, { headers }).then(response => response.json());
     assert.equal(orders[0].customer_name, '測試客戶');
     assert.equal(orders[0].line_user_id, 'Ucustomer');
+    const report = await fetch(`${base}/api/admin/reports/sales?range=all`, { headers }).then(response => response.json());
+    assert.equal(report.total_orders, 1);
+    assert.equal(report.revenue, 60);
+    const csvResponse = await fetch(`${base}/api/admin/reports/orders.csv?range=all`, { headers });
+    assert.equal(csvResponse.status, 200);
+    const csv = await csvResponse.text();
+    assert.match(csv, /訂單日期,訂單編號,姓名/);
+    assert.match(csv, /測試客戶/);
     await fetch(`${base}/api/admin/settings`, {
       method: 'PUT', headers, body: JSON.stringify({ bank_transfer_enabled: true, bank_account: '1234567890', logo_url: 'https://example.com/logo.png', hero_image_url: 'https://example.com/hero.jpg' })
     });

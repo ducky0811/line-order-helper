@@ -36,6 +36,101 @@ function friendlySheetsError(reason) {
 }
 function secureEqual(left, right) { const a = Buffer.from(String(left || '')); const b = Buffer.from(String(right || '')); return a.length === b.length && crypto.timingSafeEqual(a, b); }
 
+function taipeiParts(dateValue) {
+  const date = new Date(dateValue);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map(part => [part.type, part.value]));
+}
+
+function taipeiDateKey(dateValue) {
+  const parts = taipeiParts(dateValue);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function taipeiMonthKey(dateValue) {
+  const parts = taipeiParts(dateValue);
+  return `${parts.year}-${parts.month}`;
+}
+
+function isOrderInRange(order, range = 'month') {
+  if (range === 'all') return true;
+  const now = new Date();
+  const created = new Date(order.created_at);
+  if (range === 'today') return taipeiDateKey(created) === taipeiDateKey(now);
+  if (range === 'last30') return created.getTime() >= now.getTime() - 30 * 86400000;
+  return taipeiMonthKey(created) === taipeiMonthKey(now);
+}
+
+function completedRevenueOrders(orders) {
+  return orders.filter(order => order.status !== 'cancelled');
+}
+
+function buildSalesReport(orders, range = 'month') {
+  const scoped = orders.filter(order => isOrderInRange(order, range));
+  const revenueOrders = completedRevenueOrders(scoped);
+  const paidOrders = scoped.filter(order => order.payment_status === 'paid' && order.status !== 'cancelled');
+  const unpaidOrders = scoped.filter(order => order.payment_status !== 'paid' && order.status !== 'cancelled');
+  const cancelledOrders = scoped.filter(order => order.status === 'cancelled');
+  const sum = rows => rows.reduce((total, order) => total + Number(order.total || 0), 0);
+  const byPayment = scoped.reduce((result, order) => {
+    const key = order.payment_method === 'bank_transfer' ? 'bank_transfer' : 'cash';
+    result[key] = (result[key] || 0) + Number(order.total || 0);
+    return result;
+  }, {});
+  const byStatus = scoped.reduce((result, order) => {
+    result[order.status || 'new'] = (result[order.status || 'new'] || 0) + 1;
+    return result;
+  }, {});
+  return {
+    range,
+    total_orders: scoped.length,
+    active_orders: revenueOrders.length,
+    revenue: sum(revenueOrders),
+    paid_revenue: sum(paidOrders),
+    unpaid_revenue: sum(unpaidOrders),
+    cancelled_revenue: sum(cancelledOrders),
+    average_order_value: revenueOrders.length ? Math.round(sum(revenueOrders) / revenueOrders.length) : 0,
+    by_payment: byPayment,
+    by_status: byStatus
+  };
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function orderCsv(orders) {
+  const headers = ['訂單日期', '訂單編號', '姓名', '電話', '商品明細', '訂單金額', '付款方式', '付款狀態', '匯款末五碼', '取貨方式', '取貨時間', '訂單狀態', '備註'];
+  const statusText = { new: '新訂單', confirmed: '已確認', preparing: '製作中', ready: '可取貨', completed: '已完成', cancelled: '已取消' };
+  const paymentText = { unpaid: '未付款', pending: '待核對', paid: '已付款', refunded: '已退款' };
+  const paymentMethodText = { cash: '現金取貨', bank_transfer: '銀行轉帳' };
+  const lines = [headers.map(csvCell).join(',')];
+  for (const order of orders) {
+    lines.push([
+      new Date(order.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
+      `#${String(order.id || '').slice(0, 8)}`,
+      order.customer_name || '',
+      order.phone || '',
+      order.summary || '',
+      order.total || 0,
+      paymentMethodText[order.payment_method] || order.payment_method || '',
+      paymentText[order.payment_status] || order.payment_status || '',
+      order.transfer_last5 || '',
+      order.fulfillment || '',
+      order.pickup_time || '',
+      statusText[order.status] || order.status || '',
+      order.note || ''
+    ].map(csvCell).join(','));
+  }
+  return `\uFEFF${lines.join('\r\n')}`;
+}
+
 async function createApp(options = {}) {
   const rootDir = options.rootDir || path.join(__dirname, '..');
   const app = express();
@@ -298,6 +393,21 @@ async function createApp(options = {}) {
   });
   admin.get('/orders', async (req, res, next) => {
     try { if (req.merchant) { const policy = retentionPolicy(req.merchant); if (policy.purge_before) await req.store.purgeOrdersBefore(policy.purge_before); } res.json(await req.store.listOrders()); } catch (error) { next(error); }
+  });
+  admin.get('/reports/sales', async (req, res, next) => {
+    try {
+      const orders = await req.store.listOrders();
+      res.json(buildSalesReport(orders, String(req.query.range || 'month')));
+    } catch (error) { next(error); }
+  });
+  admin.get('/reports/orders.csv', async (req, res, next) => {
+    try {
+      const range = String(req.query.range || 'month');
+      const orders = (await req.store.listOrders()).filter(order => isOrderInRange(order, range));
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="orders-${range}.csv"`);
+      res.send(orderCsv(orders));
+    } catch (error) { next(error); }
   });
   admin.patch('/orders/:id/status', async (req, res, next) => {
     try {

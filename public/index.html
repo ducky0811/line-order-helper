@@ -53,6 +53,7 @@
       <nav>
         <button class="tab active" data-tab="products">商品管理</button>
         <button class="tab" data-tab="orders">訂單處理</button>
+        <button class="tab" data-tab="reports">營業報表</button>
         <button class="tab" data-tab="settings">店家設定</button>
       </nav>
 
@@ -70,6 +71,16 @@
         <div id="orderStatusFilters" class="order-status-filters" aria-label="訂單狀態篩選"></div>
         <p class="order-help">在訂單右側的「訂單狀態」選擇「已完成」或「已取消」，該筆訂單就會移到歷史訂單。</p>
         <div id="orderList" class="order-list"></div>
+      </section>
+
+      <section id="reportsPanel" class="panel" hidden>
+        <div class="panel-title"><div><h2>營業報表</h2><p>快速查看營業額、收款狀況，並下載給 Excel 開啟整理。</p></div><button id="refreshReports" class="ghost">重新整理</button></div>
+        <div class="report-toolbar">
+          <label><span>報表期間</span><select id="reportRange"><option value="today">今天</option><option value="month" selected>本月</option><option value="last30">最近 30 天</option><option value="all">全部訂單</option></select></label>
+          <button id="exportOrders" type="button">下載 Excel 訂單表</button>
+        </div>
+        <div id="reportCards" class="report-grid"></div>
+        <p class="order-help">目前報表先統計營業額與收款狀況；若要計算獲利，下一步可為商品加上「成本」欄位。</p>
       </section>
 
       <section id="settingsPanel" class="panel" hidden>
@@ -186,6 +197,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260621-13" defer></script>
+  <script src="/admin/app.js?v=20260625-01" defer></script>
 </body>
 </html>
