@@ -53,9 +53,15 @@ function renderProducts() {
   document.querySelectorAll('.product-card').forEach(card=>card.addEventListener('click',()=>openProduct(state.products.find(item=>item.id===card.dataset.id))));
 }
 
-function openProduct(product=null) {
+async function ensureFulfillmentOptions(){if(state.fulfillmentOptions.length)return;try{const settings=await api('/api/admin/settings');state.fulfillmentOptions=(settings.fulfillment_options||[]).map(item=>({...item}));}catch{state.fulfillmentOptions=[];}}
+function renderProductFulfillmentOptions(product=null){const enabled=state.fulfillmentOptions.filter(item=>item.enabled!==false);const selected=Array.isArray(product?.fulfillment_ids)&&product.fulfillment_ids.length?product.fulfillment_ids:enabled.map(item=>item.id);$('#productFulfillmentOptions').innerHTML=enabled.length?enabled.map(item=>`<label class="compact-switch"><input type="checkbox" value="${escapeHtml(item.id)}" ${selected.includes(item.id)?'checked':''}>${escapeHtml(item.label)}</label>`).join(''):'<p class="field-help">請先到「店家設定」新增至少一種取貨方式。</p>';}
+function readProductFulfillmentIds(){return [...document.querySelectorAll('#productFulfillmentOptions input:checked')].map(input=>input.value);}
+
+async function openProduct(product=null) {
+  await ensureFulfillmentOptions();
   $('#productForm').reset(); $('#formError').textContent=''; $('#productId').value=product?.id||''; $('#dialogTitle').textContent=product?'編輯商品':'新增商品';
   $('#name').value=product?.name||''; $('#productType').value=product?.product_type==='quote'?'quote':'fixed'; $('#price').value=product?.price??''; $('#stock').value=product?.stock??''; $('#description').value=product?.description||''; $('#quotePrompt').value=product?.quote_prompt||''; $('#imageUrl').value=product?.image_url||''; $('#active').checked=product?.active!==false; $('#deleteProduct').hidden=!product; toggleProductTypeFields();
+  renderProductFulfillmentOptions(product);
   $('#imagePreview').src=product?.image_url||''; $('#imagePreview').hidden=!product?.image_url; $('#productDialog').showModal();
 }
 $('#addProduct').addEventListener('click',()=>openProduct()); $('#closeDialog').addEventListener('click',()=>$('#productDialog').close());
@@ -82,7 +88,8 @@ $('#productForm').addEventListener('submit',async event=>{
   try {
     let imageUrl=$('#imageUrl').value; const file=$('#imageFile').files[0];
     if(file){saveButton.textContent='照片上傳中…';const uploaded=await api('/api/admin/images',{method:'POST',body:JSON.stringify({data_url:await resizeImage(file)})});imageUrl=uploaded.url;}
-    const body={name:$('#name').value,product_type:$('#productType').value,price:Number($('#price').value||0),stock:$('#stock').value,description:$('#description').value,quote_prompt:$('#quotePrompt').value,image_url:imageUrl,active:$('#active').checked};
+    const fulfillmentIds=readProductFulfillmentIds();if(!fulfillmentIds.length)throw new Error('請至少選擇一種此商品可用的取貨方式');
+    const body={name:$('#name').value,product_type:$('#productType').value,price:Number($('#price').value||0),stock:$('#stock').value,description:$('#description').value,quote_prompt:$('#quotePrompt').value,fulfillment_ids:fulfillmentIds,image_url:imageUrl,active:$('#active').checked};
     saveButton.textContent='儲存中…'; await api(id?`/api/admin/products/${id}`:'/api/admin/products',{method:id?'PUT':'POST',body:JSON.stringify(body)}); $('#productDialog').close(); await loadProducts(); toast('商品已儲存');
   } catch(error) { $('#formError').textContent=error.message; } finally { saveButton.disabled=false; saveButton.textContent='儲存商品'; }
 });

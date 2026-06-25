@@ -107,6 +107,7 @@ function normalizeProduct(input, existing = {}, merchantId = DEFAULT_MERCHANT_ID
     price: productType === 'quote' ? 0 : price,
     product_type: productType,
     quote_prompt: String(input.quote_prompt || '').trim().slice(0, 240),
+    fulfillment_ids: Array.isArray(input.fulfillment_ids) ? input.fulfillment_ids.map(value => String(value).trim()).filter(Boolean).slice(0, 12) : (Array.isArray(existing.fulfillment_ids) ? existing.fulfillment_ids : []),
     description: String(input.description || '').trim(),
     image_url: String(input.image_url || input.image || '').trim(),
     active: input.active !== false,

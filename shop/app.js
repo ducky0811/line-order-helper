@@ -21,13 +21,16 @@ window.fetch = (input, options = {}) => {
   return nativeFetch(input, options);
 };
 
-function fulfillmentOptions() {
-  return (state.config?.fulfillment_options || []).filter(item => item.enabled !== false);
+function fulfillmentOptions(products = []) {
+  const enabled = (state.config?.fulfillment_options || []).filter(item => item.enabled !== false);
+  if (!products.length) return enabled;
+  return enabled.filter(option => products.every(product => !Array.isArray(product.fulfillment_ids) || !product.fulfillment_ids.length || product.fulfillment_ids.includes(option.id)));
 }
 
-function renderFulfillmentChoices(targetId) {
-  const options = fulfillmentOptions();
-  $(targetId).innerHTML = options.map((item, index) => `<label><input type="radio" name="${targetId}" value="${escapeHtml(item.id)}" ${index === 0 ? 'checked' : ''}> ${escapeHtml(item.label)}</label>`).join('');
+function renderFulfillmentChoices(targetId, products = []) {
+  const options = fulfillmentOptions(products);
+  $(targetId).innerHTML = options.length ? options.map((item, index) => `<label><input type="radio" name="${targetId}" value="${escapeHtml(item.id)}" ${index === 0 ? 'checked' : ''}> ${escapeHtml(item.label)}</label>`).join('') : '<p class="choice-empty">這項商品目前沒有可用取貨方式，請聯絡店家。</p>';
+  return options.length;
 }
 
 function configureCheckout(config) {
@@ -109,11 +112,12 @@ function total() {
 
 function renderCart() {
   const rows = cartRows();
+  const hasFulfillment = renderFulfillmentChoices('#fulfillmentChoices', rows.map(row => row.product));
   $('#cartCount').textContent = rows.reduce((sum, row) => sum + row.quantity, 0);
   $('#cartTotal').textContent = money(total());
   $('#checkoutTotal').textContent = money(total());
   $('#cartItems').innerHTML = rows.length ? rows.map(({ product, quantity }) => `<div class="cart-row"><div><strong>${escapeHtml(product.name)}</strong><p>${money(product.price)} × ${quantity}</p></div><div class="quantity"><button data-action="minus" data-id="${product.id}">−</button><b>${quantity}</b><button data-action="plus" data-id="${product.id}">＋</button></div></div>`).join('') : '<div class="empty">購物車還是空的。</div>';
-  $('#startCheckout').disabled = !rows.length || !state.acceptingOrders;
+  $('#startCheckout').disabled = !rows.length || !state.acceptingOrders || !hasFulfillment;
   document.querySelectorAll('.quantity button').forEach(button => button.addEventListener('click', () => {
     state.cart[button.dataset.id] = (state.cart[button.dataset.id] || 0) + (button.dataset.action === 'plus' ? 1 : -1);
     if (state.cart[button.dataset.id] <= 0) delete state.cart[button.dataset.id];
@@ -132,7 +136,7 @@ function openQuote(product) {
   $('#quoteProductId').value = product.id;
   $('#quoteProductName').textContent = product.name;
   $('#quoteRequest').placeholder = product.quote_prompt || '請寫下尺寸、口味、顏色、數量、預算、交貨日期、想放的文字或其他需求';
-  renderFulfillmentChoices('#quoteFulfillmentChoices');
+  renderFulfillmentChoices('#quoteFulfillmentChoices', [product]);
   $('#quoteDialog').showModal();
 }
 

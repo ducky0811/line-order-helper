@@ -190,6 +190,7 @@
       <div class="two-col"><label>價格<input id="price" type="number" min="0" step="1" required></label><label>庫存（可留白）<input id="stock" type="number" min="0"></label></div>
       <label>商品介紹<textarea id="description" rows="3" maxlength="180"></textarea></label>
       <label id="quotePromptField" hidden>客製需求提示<textarea id="quotePrompt" rows="3" maxlength="240" placeholder="例如：請填寫尺寸、口味、顏色、交貨日期、預算與想放的文字"></textarea></label>
+      <div class="product-fulfillment-box"><b>此商品可用取貨方式</b><p class="field-help">只勾選這項商品能使用的方式；若店家設定有新增方式，這裡會跟著出現。</p><div id="productFulfillmentOptions" class="product-fulfillment-options"></div></div>
       <label>商品照片<input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp"><span class="field-help">可直接使用手機相簿，系統會自動縮小照片。</span></label>
       <img id="imagePreview" class="image-preview" alt="商品照片預覽" hidden>
       <details><summary>或使用圖片網址</summary><label>圖片網址<input id="imageUrl" type="url" placeholder="https://..."></label></details>

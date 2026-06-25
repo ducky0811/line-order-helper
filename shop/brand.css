@@ -31,6 +31,7 @@
 .payment-info { margin-top: 16px; padding: 15px; border-radius: 14px; background: #eef7ff; color: #23405c; text-align: left; line-height: 1.7; }
 .quote-add { width: auto; padding: 0 12px; font-size: 14px; font-weight: 900; }
 .quote-product-name { margin: 8px 0 16px; padding: 12px; border-radius: 12px; background: #fff5ef; color: #8b3c19; font-weight: 900; }
+.choice-empty { grid-column: 1 / -1; margin: 0; padding: 12px; border-radius: 12px; background: #fff0e9; color: #a23b19; font-size: 13px; font-weight: 800; }
 dialog { max-height: 88dvh; overflow-y: auto; }
 [hidden] { display: none !important; }
 .store-logo { display: block; width: 78px; height: 78px; margin: 0 0 14px; border: 3px solid rgba(255,255,255,.9); border-radius: 50%; object-fit: cover; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.2); }

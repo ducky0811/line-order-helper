@@ -44,6 +44,10 @@ summary {
 .quote-box p { margin: 0; color: #5f4a35; white-space: pre-wrap; }
 .quote-box label { margin: 0; }
 .quote-box button { justify-self: start; }
+.product-fulfillment-box { display: grid; gap: 8px; margin: 14px 0; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: #f8faff; }
+.product-fulfillment-box > b { color: var(--ink); }
+.product-fulfillment-box p { margin: 0; }
+.product-fulfillment-options { display: flex; flex-wrap: wrap; gap: 10px 14px; }
 .report-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 12px; align-items: end; margin: 14px 0 18px; }
 .report-toolbar label { margin: 0; }
 .report-toolbar label span { color: var(--muted); font-size: 12px; }

@@ -56,3 +56,22 @@ test('客製詢價商品會建立待報價訂單', async () => {
   assert.match(order.summary, /待報價/);
   await assert.rejects(() => buildOrder(store, { customer_name: '客戶', phone: '0900', items: [{ product_id: 'custom-cake', quantity: 1 }] }), /客製需求/);
 });
+
+test('商品可限制可用取貨方式', async () => {
+  const store = {
+    listProducts: async () => [{ id: 'frozen', name: '冷凍禮盒', price: 680, active: true, fulfillment_ids: ['delivery'] }],
+    getSettings: async () => ({
+      checkout_fields: {
+        customer_name: { label: '姓名', enabled: true, required: true },
+        phone: { label: '電話', enabled: true, required: true }
+      },
+      fulfillment_options: [{ id: 'pickup', label: '到店取貨', enabled: true }, { id: 'delivery', label: '冷凍宅配', enabled: true }],
+      cash_enabled: true,
+      bank_transfer_enabled: true
+    })
+  };
+  const order = await buildOrder(store, { customer_name: '客戶', phone: '0900', fulfillment: 'delivery', items: [{ product_id: 'frozen', quantity: 1 }] });
+  assert.equal(order.fulfillment, '冷凍宅配');
+  const fallback = await buildOrder(store, { customer_name: '客戶', phone: '0900', fulfillment: 'pickup', items: [{ product_id: 'frozen', quantity: 1 }] });
+  assert.equal(fallback.fulfillment, '冷凍宅配');
+});

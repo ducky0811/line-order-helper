@@ -20,6 +20,7 @@ async function buildOrder(store, input = {}) {
       product_id: product.id,
       name: product.name,
       product_type: isQuoteProduct ? 'quote' : 'fixed',
+      fulfillment_ids: Array.isArray(product.fulfillment_ids) ? product.fulfillment_ids : [],
       price: isQuoteProduct ? 0 : Number(product.price),
       quantity,
       subtotal: isQuoteProduct ? 0 : Number(product.price) * quantity
@@ -39,7 +40,9 @@ async function buildOrder(store, input = {}) {
   if (fields.pickup_time?.enabled !== false && fields.pickup_time?.required && !pickupTime) throw new Error(`請填寫${fields.pickup_time.label || '希望取貨時間'}`);
   if (fields.note?.enabled !== false && fields.note?.required && !note) throw new Error(`請填寫${fields.note.label || '備註'}`);
   const fulfillmentOptions = (settings.fulfillment_options || [{ id: 'pickup', label: '到店取貨', enabled: true }]).filter(item => item.enabled !== false);
-  const selectedFulfillment = fulfillmentOptions.find(item => item.id === input.fulfillment) || fulfillmentOptions[0];
+  const allowedFulfillmentOptions = fulfillmentOptions.filter(option => items.every(item => !item.fulfillment_ids?.length || item.fulfillment_ids.includes(option.id)));
+  if (!allowedFulfillmentOptions.length) throw new Error('此商品目前沒有可用的取貨方式，請聯絡店家');
+  const selectedFulfillment = allowedFulfillmentOptions.find(item => item.id === input.fulfillment) || allowedFulfillmentOptions[0];
   if (!selectedFulfillment) throw new Error('店家尚未設定取貨方式');
   const enabledMethods = [];
   if (settings.cash_enabled) enabledMethods.push('cash');

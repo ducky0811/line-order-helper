@@ -5,6 +5,7 @@ create table if not exists public.products (
   price numeric not null check (price >= 0),
   product_type text not null default 'fixed',
   quote_prompt text not null default '',
+  fulfillment_ids jsonb not null default '[]'::jsonb,
   description text not null default '',
   image_url text not null default '',
   active boolean not null default true,
@@ -136,6 +137,7 @@ alter table public.orders add column if not exists transfer_last5 text not null 
 alter table public.orders add column if not exists paid_at timestamptz;
 alter table public.products add column if not exists product_type text not null default 'fixed';
 alter table public.products add column if not exists quote_prompt text not null default '';
+alter table public.products add column if not exists fulfillment_ids jsonb not null default '[]'::jsonb;
 alter table public.store_settings add column if not exists merchant_line_user_id text not null default '';
 alter table public.store_settings add column if not exists cash_enabled boolean not null default true;
 alter table public.store_settings add column if not exists bank_transfer_enabled boolean not null default true;
