@@ -20,8 +20,9 @@ test('每間店的 Google 試算表設定互不相通', async () => {
 });
 
 test('基本版與專業版權限及保存時間正確', () => {
-  assert.deepEqual({ line: planCapabilities({ plan: 'basic' }).line, sheets: planCapabilities({ plan: 'basic' }).sheets, days: planCapabilities({ plan: 'basic' }).retention_days }, { line: false, sheets: false, days: 365 });
-  assert.deepEqual({ line: planCapabilities({ plan: 'pro' }).line, sheets: planCapabilities({ plan: 'pro' }).sheets, days: planCapabilities({ plan: 'pro' }).retention_days }, { line: true, sheets: false, days: 1095 });
+  assert.deepEqual({ line: planCapabilities({ plan: 'trial' }).line, reports: planCapabilities({ plan: 'trial' }).reports, days: planCapabilities({ plan: 'trial' }).retention_days }, { line: true, reports: true, days: 30 });
+  assert.deepEqual({ line: planCapabilities({ plan: 'basic' }).line, reports: planCapabilities({ plan: 'basic' }).reports, days: planCapabilities({ plan: 'basic' }).retention_days }, { line: false, reports: false, days: 365 });
+  assert.deepEqual({ line: planCapabilities({ plan: 'pro' }).line, reports: planCapabilities({ plan: 'pro' }).reports, days: planCapabilities({ plan: 'pro' }).retention_days }, { line: true, reports: true, days: 1095 });
   const policy = retentionPolicy({ plan: 'trial', trial_ends_at: '2026-01-15T00:00:00.000Z', expires_at: '2026-01-15T00:00:00.000Z' }, new Date('2026-01-20T00:00:00.000Z'));
   assert.equal(policy.delete_at, '2026-02-14T00:00:00.000Z');
   assert.equal(policy.purge_before, null);

@@ -419,14 +419,22 @@ async function createApp(options = {}) {
   admin.get('/orders', async (req, res, next) => {
     try { if (req.merchant) { const policy = retentionPolicy(req.merchant); if (policy.purge_before) await req.store.purgeOrdersBefore(policy.purge_before); } res.json(await req.store.listOrders()); } catch (error) { next(error); }
   });
+  function requireReportsFeature(req) {
+    if (!req.merchant || hasPlanFeature(req.merchant, 'reports')) return;
+    const error = new Error('營業報表與 Excel 匯出為專業版功能');
+    error.status = 403;
+    throw error;
+  }
   admin.get('/reports/sales', async (req, res, next) => {
     try {
+      requireReportsFeature(req);
       const orders = await req.store.listOrders();
       res.json(buildSalesReport(orders, String(req.query.range || 'month')));
     } catch (error) { next(error); }
   });
   admin.get('/reports/orders.csv', async (req, res, next) => {
     try {
+      requireReportsFeature(req);
       const range = String(req.query.range || 'month');
       const orders = (await req.store.listOrders()).filter(order => isOrderInRange(order, range));
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');

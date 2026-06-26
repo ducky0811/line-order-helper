@@ -18,10 +18,17 @@ async function api(path, options = {}) {
 function toast(text) { const el=$('#toast'); el.textContent=text; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200); }
 function escapeHtml(value='') { return String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }
 function paymentMethodLabel(value){return value==='bank_transfer'?'銀行轉帳':value==='quote'?'客製詢價':'現金取貨';}
+function canUseReports(){return !state.account?.merchant||state.account?.capabilities?.reports===true;}
+function setActiveTab(selected){
+  if(selected==='reports'&&!canUseReports()){toast('營業報表與 Excel 匯出為專業版功能');selected='products';}
+  state.activeTab=selected;document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab===selected));$('#productsPanel').hidden=selected!=='products';$('#ordersPanel').hidden=selected!=='orders';$('#reportsPanel').hidden=selected!=='reports';$('#settingsPanel').hidden=selected!=='settings';
+  if(selected==='orders')loadOrders();if(selected==='reports')loadReport();if(selected==='settings'){loadSettings();loadLineIntegration();}
+}
+function updatePlanLocks(){const reportTab=document.querySelector('.tab[data-tab="reports"]');if(reportTab){const allowed=canUseReports();reportTab.hidden=!allowed;reportTab.disabled=!allowed;}if(state.activeTab==='reports'&&!canUseReports())setActiveTab('products');}
 function clearMerchantView(){state.products=[];state.orders=[];state.report=null;state.fulfillmentOptions=[];state.account=null;state.lineIntegration=null;state.lineStep=1;state.activeTab='products';state.orderView='active';state.orderStatus='all';state.orderQuery='';state.orderDraftDirty=false;state.reportRange='month';$('#productList').innerHTML='<div class="empty">正在載入這間店的商品…</div>';$('#orderList').innerHTML='<div class="empty">正在載入這間店的訂單…</div>';$('#reportCards').innerHTML='';$('#orderSearch').value='';$('#reportRange').value='month';$('#settingsForm').reset();updateBrandPreview('logo');updateBrandPreview('hero');$('#accountSummary').textContent='';document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.tab==='products'));$('#productsPanel').hidden=false;$('#ordersPanel').hidden=true;$('#reportsPanel').hidden=true;$('#settingsPanel').hidden=true;document.querySelectorAll('.order-filter').forEach(button=>button.classList.toggle('active',button.dataset.view==='active'));}
 function showApp() { clearMerchantView();$('#loginView').hidden=true; $('#registerView').hidden=true; $('#appView').hidden=false; loadProducts(); loadAccount(); }
 function logout() { localStorage.removeItem('adminToken'); state.token=null;clearMerchantView();$('#appView').hidden=true; $('#registerView').hidden=true; $('#loginView').hidden=false; }
-async function loadAccount(){try{state.account=await api('/api/admin/account');const merchant=state.account.merchant;if(!merchant){$('#accountSummary').textContent='既有測試商店';return;}const until=new Date(merchant.expires_at||merchant.trial_ends_at).toLocaleDateString('zh-TW');const retention=state.account.retention?.retention_days;$('#accountSummary').innerHTML=`方案：${escapeHtml(state.account.capabilities?.label||merchant.plan)} · 到期日：${escapeHtml(until)}${retention?` · 訂單保存 ${retention>=365?`${Math.round(retention/365)} 年`:`${retention} 天`}`:''} · <a href="${escapeHtml(state.account.shop_url)}" target="_blank">開啟商店</a>`;}catch(error){toast(error.message);}}
+async function loadAccount(){try{state.account=await api('/api/admin/account');updatePlanLocks();const merchant=state.account.merchant;if(!merchant){$('#accountSummary').textContent='既有測試商店';return;}const until=new Date(merchant.expires_at||merchant.trial_ends_at).toLocaleDateString('zh-TW');const retention=state.account.retention?.retention_days;$('#accountSummary').innerHTML=`方案：${escapeHtml(state.account.capabilities?.label||merchant.plan)} · 到期日：${escapeHtml(until)}${retention?` · 訂單保存 ${retention>=365?`${Math.round(retention/365)} 年`:`${retention} 天`}`:''} · <a href="${escapeHtml(state.account.shop_url)}" target="_blank">開啟商店</a>`;}catch(error){toast(error.message);}}
 
 $('#loginForm').addEventListener('submit', async event => {
   event.preventDefault(); $('#loginError').textContent='';
@@ -36,11 +43,7 @@ document.addEventListener('click',event=>{if(event.target.closest('[data-show-re
 $('#showLogin').addEventListener('click',()=>{$('#registerView').hidden=true;$('#loginView').hidden=false;});
 $('#registerForm').addEventListener('submit',async event=>{event.preventDefault();$('#registerError').textContent='';const button=event.submitter;button.disabled=true;try{const result=await api('/api/admin/register',{method:'POST',body:JSON.stringify({store_name:$('#registerStoreName').value,slug:$('#registerSlug').value,email:$('#registerEmail').value,password:$('#registerPassword').value})});state.token=result.token;localStorage.setItem('adminToken',result.token);showApp();toast('商店建立成功，免費試用 14 天');}catch(error){$('#registerError').textContent=error.message;}finally{button.disabled=false;}});
 
-document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('active',tab===button));
-  const selected=button.dataset.tab; state.activeTab=selected; $('#productsPanel').hidden=selected!=='products'; $('#ordersPanel').hidden=selected!=='orders'; $('#reportsPanel').hidden=selected!=='reports'; $('#settingsPanel').hidden=selected!=='settings';
-  if(selected==='orders') loadOrders(); if(selected==='reports') loadReport(); if(selected==='settings'){loadSettings();loadLineIntegration();}
-}));
+document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{if(button.disabled||button.hidden)return;setActiveTab(button.dataset.tab);}));
 
 async function loadProducts() {
   try { state.products=await api('/api/admin/products'); renderProducts(); } catch(error) { toast(error.message); }
