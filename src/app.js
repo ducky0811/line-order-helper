@@ -300,6 +300,7 @@ async function createApp(options = {}) {
     try {
       const order = await req.store.findOrderByClaimCode(req.params.claimCode);
       if (!order) return res.status(404).json({ error: '找不到訂單' });
+      const settings = await req.store.getSettings();
       res.json({
         id: order.id,
         summary: order.summary,
@@ -314,7 +315,14 @@ async function createApp(options = {}) {
         quote_amount: order.quote_amount,
         quote_note: order.quote_note || '',
         quote_request: order.quote_request || '',
-        order_messages: Array.isArray(order.order_messages) ? order.order_messages : []
+        order_messages: Array.isArray(order.order_messages) ? order.order_messages : [],
+        payment_info: (order.payment_method === 'bank_transfer' || order.quote_status === 'quoted') ? {
+          bank_name: settings.bank_name || '',
+          bank_code: settings.bank_code || '',
+          bank_account: settings.bank_account || '',
+          bank_account_name: settings.bank_account_name || '',
+          instructions: settings.payment_instructions || ''
+        } : null
       });
     } catch (error) { next(error); }
   });

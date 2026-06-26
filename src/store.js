@@ -267,7 +267,7 @@ class LocalStore {
     const orders = await this.listOrders();
     const order = orders.find(item => item.claim_code === String(code || '').trim().toUpperCase());
     if (!order) throw new Error('找不到這筆訂單');
-    if (order.payment_method !== 'bank_transfer') throw new Error('這筆訂單不是銀行轉帳');
+    if (order.payment_method !== 'bank_transfer' && !(order.payment_method === 'quote' && order.quote_status === 'quoted')) throw new Error('這筆訂單目前不能回填匯款末五碼');
     order.transfer_last5 = String(last5 || '').trim();
     order.payment_status = 'pending';
     order.updated_at = new Date().toISOString();
@@ -447,7 +447,7 @@ class SupabaseStore {
   async submitTransferLast5(code, last5) {
     const order = await this.findOrderByClaimCode(code);
     if (!order) throw new Error('找不到這筆訂單');
-    if (order.payment_method !== 'bank_transfer') throw new Error('這筆訂單不是銀行轉帳');
+    if (order.payment_method !== 'bank_transfer' && !(order.payment_method === 'quote' && order.quote_status === 'quoted')) throw new Error('這筆訂單目前不能回填匯款末五碼');
     const rows = await this.request(`orders?id=eq.${encodeURIComponent(order.id)}&merchant_id=eq.${encodeURIComponent(this.merchantId)}`, {
       method: 'PATCH',
       body: JSON.stringify({ transfer_last5: String(last5 || '').trim(), payment_status: 'pending', updated_at: new Date().toISOString() })

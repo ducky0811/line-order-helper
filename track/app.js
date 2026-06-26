@@ -89,6 +89,11 @@ function renderMessages(messages = []) {
   return `<section class="messages"><h2>與店家溝通</h2>${messages.length ? messages.map(message => `<div class="message ${message.author === 'merchant' ? 'merchant' : ''}"><small>${message.author === 'merchant' ? '店家' : '您'} · ${new Date(message.created_at).toLocaleString('zh-TW')}</small>${message.text ? `<p>${escapeHtml(message.text)}</p>` : ''}${message.image_url ? `<a href="${escapeHtml(message.image_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(message.image_url)}" alt="溝通照片"></a>` : ''}</div>`).join('') : '<p class="hint">還沒有留言。若是客製商品，可以在這裡補充文字或參考照片。</p>'}<form id="messageForm"><label>留言<textarea id="messageText" rows="3" maxlength="600" placeholder="例如：這是我想要的風格，或補充尺寸、顏色、日期"></textarea></label><label>參考照片<input id="messageImage" type="file" accept="image/*"></label><button id="messageSubmit" type="submit">送出留言／照片</button><p class="hint">送出後，店家會在後台看到；若店家有綁 LINE，也會收到提醒。</p><p id="messageError" class="error"></p></form></section>`;
 }
 
+function renderPaymentInfo(info) {
+  if (!info || !info.bank_account) return '';
+  return `<section class="payment-info"><b>匯款資料</b><p>${escapeHtml(info.bank_name || '')}${info.bank_code ? `（${escapeHtml(info.bank_code)}）` : ''}<br><strong>帳號：${escapeHtml(info.bank_account)}</strong><br>戶名：${escapeHtml(info.bank_account_name || '')}${info.instructions ? `<br>${escapeHtml(info.instructions)}` : ''}</p></section>`;
+}
+
 async function load() {
   if (!code) { document.querySelector('#content').innerHTML = '<p>缺少訂單查詢碼。</p>'; return; }
   try {
@@ -96,9 +101,10 @@ async function load() {
     const order = await response.json();
     if (!response.ok) throw new Error(order.error || '查詢失敗');
     const isQuote = order.quote_status === 'requested' || order.quote_status === 'quoted';
-    const paymentForm = order.payment_method === 'bank_transfer' && !['paid', 'refunded'].includes(order.payment_status) ? `<form id="paymentForm"><label>匯款帳號末五碼<input id="last5" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" value="${escapeHtml(order.transfer_last5 || '')}" required></label><button type="submit">送出末五碼</button><p id="paymentError" class="error"></p></form>` : '';
-    const quoteBlock = isQuote ? `<p class="summary">詢價狀態：${order.quote_status === 'quoted' ? '已報價' : '等待店家報價'}</p>${order.quote_note ? `<p>${escapeHtml(order.quote_note)}</p>` : ''}` : '';
-    document.querySelector('#content').innerHTML = `<div class="number">#${escapeHtml(order.id.slice(0, 8))}</div><p class="summary">${escapeHtml(order.summary)}</p><p class="price">${order.quote_status === 'requested' ? '待報價' : `NT$ ${Number(order.total).toLocaleString('zh-TW')}`}</p>${quoteBlock}<p><span class="status">${escapeHtml(statusText[order.status] || order.status)}</span> <span class="payment">${isQuote ? '客製詢價' : escapeHtml(paymentText[order.payment_status] || order.payment_status)}</span></p><p class="line-ok">${order.claimed ? '✓ 已連結 LINE 訂單通知' : '尚未連結 LINE 通知'}</p>${paymentForm}${renderMessages(order.order_messages || [])}`;
+    const canSubmitLast5 = !['paid', 'refunded'].includes(order.payment_status) && (order.payment_method === 'bank_transfer' || (order.payment_method === 'quote' && order.quote_status === 'quoted'));
+    const paymentForm = canSubmitLast5 ? `<form id="paymentForm"><label>${order.payment_method === 'quote' ? '已匯款帳號末五碼' : '匯款帳號末五碼'}<input id="last5" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" value="${escapeHtml(order.transfer_last5 || '')}" placeholder="例如：12345" required></label><button type="submit">送出末五碼給店家</button><p class="hint">送出後，店家會收到匯款核對提醒。</p><p id="paymentError" class="error"></p></form>` : '';
+    const quoteBlock = isQuote ? `<p class="summary">詢價狀態：${order.quote_status === 'quoted' ? '已報價，請依店家說明付款' : '等待店家報價'}</p>${order.quote_note ? `<p>${escapeHtml(order.quote_note)}</p>` : ''}` : '';
+    document.querySelector('#content').innerHTML = `<div class="number">#${escapeHtml(order.id.slice(0, 8))}</div><p class="summary">${escapeHtml(order.summary)}</p><p class="price">${order.quote_status === 'requested' ? '待報價' : `NT$ ${Number(order.total).toLocaleString('zh-TW')}`}</p>${quoteBlock}<p><span class="status">${escapeHtml(statusText[order.status] || order.status)}</span> <span class="payment">${isQuote ? '客製詢價' : escapeHtml(paymentText[order.payment_status] || order.payment_status)}</span></p><p class="line-ok">${order.claimed ? '✓ 已連結 LINE 訂單通知' : '尚未連結 LINE 通知'}</p>${paymentForm ? renderPaymentInfo(order.payment_info) : ''}${paymentForm}${renderMessages(order.order_messages || [])}`;
     document.querySelector('#paymentForm')?.addEventListener('submit', submitLast5);
     document.querySelector('#messageForm')?.addEventListener('submit', submitMessage);
     document.querySelector('#content')?.addEventListener('input', markEditing);

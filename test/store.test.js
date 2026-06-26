@@ -87,3 +87,15 @@ test('訂單可保存客製溝通留言與照片', async () => {
   assert.equal(merchant.order_messages.length, 2);
   assert.equal(merchant.order_messages[1].author, 'merchant');
 });
+
+test('客製詢價報價後可回填匯款末五碼', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'line-order-quote-payment-'));
+  const store = new LocalStore(dir);
+  await store.init();
+  const order = await store.createOrder({ items: [], summary: '客製蛋糕x1', total: 0, payment_method: 'quote', quote_status: 'requested' });
+  await assert.rejects(() => store.submitTransferLast5(order.claim_code, '12345'), /目前不能回填/);
+  await store.updateOrderQuote(order.id, { quote_amount: 1200, quote_note: '含冷藏宅配' });
+  const submitted = await store.submitTransferLast5(order.claim_code, '54321');
+  assert.equal(submitted.transfer_last5, '54321');
+  assert.equal(submitted.payment_status, 'pending');
+});
