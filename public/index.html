@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#2457d6">
   <title>接單小幫手</title>
   <link rel="stylesheet" href="/admin/styles.css">
-  <link rel="stylesheet" href="/admin/upload.css?v=20260621-11">
+  <link rel="stylesheet" href="/admin/upload.css?v=20260626-simple-1">
 </head>
 <body>
   <main class="shell">
@@ -19,12 +19,12 @@
       <section id="features" class="landing-section compact-section"><span class="section-kicker">三件事，一次解決</span><div class="feature-grid">
         <article><b>01</b><h3>商品隨時更新</h3><p>自己上架、改價、調整庫存，不必重做訂購表單。</p></article>
         <article><b>02</b><h3>訂單不再漏掉</h3><p>訂單、付款末五碼與處理進度，全部集中搜尋管理。</p></article>
-        <article><b>03</b><h3>LINE 需要再開</h3><p>外部網站可直接下單；專業版再加上 LINE 與試算表通知。</p></article>
+        <article><b>03</b><h3>報表直接匯出</h3><p>營業額、收款狀況與訂單明細，可直接下載 Excel 表整理。</p></article>
       </div></section>
       <section id="pricing" class="landing-section pricing-section compact-pricing"><span class="section-kicker">兩種方案</span><h2>依照需要，簡單選擇</h2><div class="pricing-grid">
         <article class="price-card"><h3>基本版</h3><div class="plan-price"><b>NT$199</b><span>／月</span></div><p>商品頁、訂單與付款管理，資料保存 12 個月。</p></article>
-        <article class="price-card recommended"><span class="popular">推薦</span><h3>專業版</h3><div class="plan-price"><b>NT$399</b><span>／月</span></div><p>基本版全部功能，加上 LINE 自動通知、Google 試算表同步，資料保存 3 年。</p></article>
-      </div><details class="plan-details"><summary>查看完整方案與注意事項</summary><div><p><b>基本版：</b>商品、庫存、訂單狀態、搜尋、自訂取貨付款與匯款末五碼。</p><p><b>專業版：</b>再加上自己的 LINE 官方帳號通知及每店獨立 Google 試算表同步。</p><p>到期後停止接單並保留資料 30 天。LINE 訊息費另計；目前不含刷卡、電子發票及物流串接。</p></div></details></section>
+        <article class="price-card recommended"><span class="popular">推薦</span><h3>專業版</h3><div class="plan-price"><b>NT$399</b><span>／月</span></div><p>基本版全部功能，加上 LINE 自動通知、客製溝通與資料保存 3 年。</p></article>
+      </div><details class="plan-details"><summary>查看完整方案與注意事項</summary><div><p><b>基本版：</b>商品、庫存、訂單狀態、搜尋、自訂取貨付款、匯款末五碼、營業報表與 Excel 匯出。</p><p><b>專業版：</b>再加上自己的 LINE 官方帳號通知、客製詢價溝通提醒與資料保存 3 年。</p><p>到期後停止接單並保留資料 30 天。LINE 訊息費另計；目前不含刷卡、電子發票及物流串接。</p></div></details></section>
       <section id="loginCard" class="login-card bottom-login-card">
         <div class="brand-mark">單</div><h2>店家登入</h2><p>已經有商店？從這裡進入管理後台。</p>
         <form id="loginForm"><label>Email<input id="loginEmail" type="email" autocomplete="email" placeholder="舊版管理者可留空"></label><label>管理密碼<input id="password" type="password" autocomplete="current-password" required></label><button type="submit">登入管理後台</button></form>
@@ -161,18 +161,6 @@
               <p id="lineIntegrationError" class="error"></p>
             </div>
           </section>
-          <section class="line-settings sheets-settings">
-            <h3>Google 試算表同步</h3><p class="field-help">每筆新訂單會同步到店家自己的試算表；不需要提供 Google 密碼或金鑰。</p>
-            <div id="legacySheetsNotice" class="notice" hidden>這是既有商店，Google Sheets 目前由 Zeabur 環境變數管理。</div>
-            <div id="sheetsPlanLock" class="plan-lock" hidden><b>專業版功能</b><span>升級專業版即可將新訂單即時備份到自己的 Google 試算表。</span></div>
-            <div id="tenantSheetsSettings">
-              <div id="sheetsConnected" class="line-complete" hidden>✓ Google 試算表同步已啟用</div>
-              <div class="sheet-step-card"><div class="sheet-step-title"><b>1</b><div><h4>建立試算表</h4><p>按下面按鈕建立新試算表，將左下角的工作表名稱改成「訂單」。</p></div></div><a class="button-link sheets-open-button" href="https://sheets.new" target="_blank" rel="noopener">開啟 Google 試算表 ↗</a></div>
-              <div class="sheet-step-card"><div class="sheet-step-title"><b>2</b><div><h4>把系統加入共用</h4><p>在試算表右上角按「共用」→ 貼上下方帳號 → 權限選「編輯者」→ 按「傳送」。</p></div></div><label>要加入共用的帳號<div class="copy-field"><input id="sheetsServiceEmail" readonly><button id="copySheetsServiceEmail" type="button" class="ghost">複製帳號</button></div></label><p class="field-help">這是系統專用帳號，不是您的 Google 帳號。</p></div>
-              <div class="sheet-step-card"><div class="sheet-step-title"><b>3</b><div><h4>貼上網址並測試</h4><p>回到剛才的試算表，複製瀏覽器上方網址，貼到下面。</p></div></div><label>Google 試算表網址<input id="sheetsUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/..."></label><label>工作表名稱<input id="sheetsName" maxlength="80" value="訂單" placeholder="訂單"></label><label class="switch"><input id="sheetsEnabled" type="checkbox" checked><span>啟用新訂單自動同步</span></label><button id="saveSheetsIntegration" type="button">儲存並測試連線</button></div>
-              <p id="sheetsIntegrationError" class="error"></p>
-            </div>
-          </section>
           <label class="switch"><input id="acceptingOrders" type="checkbox"><span>目前開放客戶下單</span></label>
           <p id="settingsError" class="error"></p>
           <button type="submit">儲存店家設定</button>
@@ -200,6 +188,6 @@
     </form>
   </dialog>
   <div id="toast" role="status"></div>
-  <script src="/admin/app.js?v=20260625-01" defer></script>
+  <script src="/admin/app.js?v=20260626-simple-1" defer></script>
 </body>
 </html>

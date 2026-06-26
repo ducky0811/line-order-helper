@@ -4,9 +4,9 @@ const crypto = require('crypto');
 
 const TRIAL_DAYS = 14;
 const PLAN_FEATURES = {
-  trial: { line: true, sheets: true, retention_days: 30, label: '免費試用' },
+  trial: { line: true, sheets: false, retention_days: 30, label: '免費試用' },
   basic: { line: false, sheets: false, retention_days: 365, label: '基本版' },
-  pro: { line: true, sheets: true, retention_days: 1095, label: '專業版' }
+  pro: { line: true, sheets: false, retention_days: 1095, label: '專業版' }
 };
 
 function normalizeSlug(value) {

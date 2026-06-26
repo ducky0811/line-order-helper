@@ -25,7 +25,7 @@
 - 取貨人、電話、取貨方式、時間與備註
 - 伺服器端重新計價，避免客戶端竄改金額
 - 狀態變更時主動通知 LINE 客戶
-- Google Sheets 訂單同步
+- 營業報表與 Excel 訂單匯出
 - 本機 JSON 測試模式與 Supabase 雲端模式
 - 多店家 Email 註冊、專屬商店網址與 14 天試用
 - 商品、訂單、設定與圖片依店家身分隔離
@@ -42,7 +42,7 @@
 - `ADMIN_PASSWORD`
 - `SESSION_SECRET`
 
-Google Sheets 與 Supabase 變數未設定時，程式仍可用本機資料模式啟動。
+Supabase 變數未設定時，程式仍可用本機資料模式啟動。
 
 ## Supabase
 

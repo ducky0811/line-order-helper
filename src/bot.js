@@ -162,9 +162,6 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
       const current = cartSummary(cart, products);
       if (!current.items.length) return reply(event.replyToken, { type: 'text', text: '購物車目前是空的，請輸入「菜單」。' });
       const order = await store.createOrder({ line_user_id: userId, ...current });
-      const time = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
-      await sheets.saveOrder({ time, ...order })
-        .catch(error => console.error('❌ 寫入 Google Sheets 失敗：', error));
       await notifyNewOrder(order).catch(error => console.error('❌ 店家 LINE 新訂單通知失敗：', error));
       carts.set(userId, {});
       return reply(event.replyToken, {
