@@ -4,9 +4,11 @@ const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, char => ({ 
 const code = new URLSearchParams(location.search).get('code');
 const merchantSlug = new URLSearchParams(location.search).get('store') || '';
 const shopHeaders = merchantSlug ? { 'X-Merchant-Slug': merchantSlug } : {};
+const state = { editing: false };
 document.querySelector('#returnShop').href = merchantSlug ? `/shop/${encodeURIComponent(merchantSlug)}/` : '/shop/';
 
 async function resizeImage(file) {
+  if (typeof createImageBitmap !== 'function') return readFileAsDataUrl(file);
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
@@ -23,6 +25,25 @@ async function resizeImage(file) {
   });
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('照片讀取失敗'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function markEditing() { state.editing = true; }
+function hasDraft() {
+  const text = document.querySelector('#messageText')?.value.trim();
+  const image = document.querySelector('#messageImage')?.files?.length;
+  const last5 = document.querySelector('#last5')?.value.trim();
+  const active = document.activeElement;
+  const editingNow = active && active.closest && active.closest('#content') && active.matches('input,textarea');
+  return Boolean(state.editing || text || image || last5 || editingNow);
+}
+
 async function submitLast5(event) {
   event.preventDefault();
   const last5 = document.querySelector('#last5').value.trim();
@@ -32,6 +53,7 @@ async function submitLast5(event) {
     const response = await fetch(`/api/shop/orders/${encodeURIComponent(code)}/payment`, { method: 'POST', cache: 'no-store', headers: { ...shopHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ transfer_last5: last5 }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '送出失敗');
+    state.editing = false;
     await load();
   } catch (reason) { error.textContent = reason.message; }
 }
@@ -57,13 +79,14 @@ async function submitMessage(event) {
     const response = await fetch(`/api/shop/orders/${encodeURIComponent(code)}/messages`, { method: 'POST', cache: 'no-store', headers: { ...shopHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: document.querySelector('#messageText').value, image_url: imageUrl }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '送出失敗');
+    state.editing = false;
     event.target.reset();
     await load();
   } catch (reason) { error.textContent = reason.message; } finally { button.disabled = false; button.textContent = original; }
 }
 
 function renderMessages(messages = []) {
-  return `<section class="messages"><h2>與店家溝通</h2>${messages.length ? messages.map(message => `<div class="message ${message.author === 'merchant' ? 'merchant' : ''}"><small>${message.author === 'merchant' ? '店家' : '您'} · ${new Date(message.created_at).toLocaleString('zh-TW')}</small>${message.text ? `<p>${escapeHtml(message.text)}</p>` : ''}${message.image_url ? `<a href="${escapeHtml(message.image_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(message.image_url)}" alt="溝通照片"></a>` : ''}</div>`).join('') : '<p class="hint">還沒有留言。若是客製商品，可以在這裡補充文字或參考照片。</p>'}<form id="messageForm"><label>留言<textarea id="messageText" rows="3" maxlength="600" placeholder="例如：這是我想要的風格，或補充尺寸、顏色、日期"></textarea></label><label>參考照片<input id="messageImage" type="file" accept="image/jpeg,image/png,image/webp"></label><button id="messageSubmit" type="submit">送出留言／照片</button><p id="messageError" class="error"></p></form></section>`;
+  return `<section class="messages"><h2>與店家溝通</h2>${messages.length ? messages.map(message => `<div class="message ${message.author === 'merchant' ? 'merchant' : ''}"><small>${message.author === 'merchant' ? '店家' : '您'} · ${new Date(message.created_at).toLocaleString('zh-TW')}</small>${message.text ? `<p>${escapeHtml(message.text)}</p>` : ''}${message.image_url ? `<a href="${escapeHtml(message.image_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(message.image_url)}" alt="溝通照片"></a>` : ''}</div>`).join('') : '<p class="hint">還沒有留言。若是客製商品，可以在這裡補充文字或參考照片。</p>'}<form id="messageForm"><label>留言<textarea id="messageText" rows="3" maxlength="600" placeholder="例如：這是我想要的風格，或補充尺寸、顏色、日期"></textarea></label><label>參考照片<input id="messageImage" type="file" accept="image/*"></label><button id="messageSubmit" type="submit">送出留言／照片</button><p class="hint">送出後，店家會在後台看到；若店家有綁 LINE，也會收到提醒。</p><p id="messageError" class="error"></p></form></section>`;
 }
 
 async function load() {
@@ -78,8 +101,10 @@ async function load() {
     document.querySelector('#content').innerHTML = `<div class="number">#${escapeHtml(order.id.slice(0, 8))}</div><p class="summary">${escapeHtml(order.summary)}</p><p class="price">${order.quote_status === 'requested' ? '待報價' : `NT$ ${Number(order.total).toLocaleString('zh-TW')}`}</p>${quoteBlock}<p><span class="status">${escapeHtml(statusText[order.status] || order.status)}</span> <span class="payment">${isQuote ? '客製詢價' : escapeHtml(paymentText[order.payment_status] || order.payment_status)}</span></p><p class="line-ok">${order.claimed ? '✓ 已連結 LINE 訂單通知' : '尚未連結 LINE 通知'}</p>${paymentForm}${renderMessages(order.order_messages || [])}`;
     document.querySelector('#paymentForm')?.addEventListener('submit', submitLast5);
     document.querySelector('#messageForm')?.addEventListener('submit', submitMessage);
+    document.querySelector('#content')?.addEventListener('input', markEditing);
+    document.querySelector('#content')?.addEventListener('change', markEditing);
   } catch (error) { document.querySelector('#content').innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
 }
 
 load();
-setInterval(load, 15000);
+setInterval(() => { if (!document.hidden && !hasDraft()) load(); }, 15000);
