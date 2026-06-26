@@ -57,6 +57,7 @@ Supabase 變數未設定時，程式仍可用本機資料模式啟動。
 - `SUPABASE_URL`
 - `PUBLIC_BASE_URL`：商店公開網址，例如 `https://line-order-saas-test.zeabur.app`，用於 LINE 訂單進度連結
 - `PLATFORM_SALES_URL`：商店頁底部「接單小幫手」品牌連結，可填銷售官網、介紹頁或 IG 網址
+- `SUPPORT_LINE_URL`：店家後台「客服 LINE」按鈕連結，例如 `https://line.me/R/ti/p/@your-support-line-id`
 - `SUPABASE_SECRET_KEY`（新版 Secret key）或 `SUPABASE_SERVICE_ROLE_KEY`（舊版）
 - `CREDENTIAL_ENCRYPTION_KEY`：用於加密各店 LINE 憑證，設定後不可任意更換
 - `MERCHANT_ID`

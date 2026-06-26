@@ -22,6 +22,10 @@ function getPlatformSalesUrl() {
   const value = String(process.env.PLATFORM_SALES_URL || '/admin/#pricing').trim();
   return value.startsWith('/') || /^https:\/\//i.test(value) ? value : '/admin/';
 }
+function getSupportLineUrl() {
+  const value = String(process.env.SUPPORT_LINE_URL || process.env.PLATFORM_SUPPORT_URL || '').trim();
+  return /^https:\/\/(line\.me|lin\.ee)\//i.test(value) ? value : '';
+}
 
 function friendlySheetsError(reason) {
   const message = String(reason?.message || reason || '');
@@ -390,7 +394,7 @@ async function createApp(options = {}) {
   const admin = express.Router();
   admin.use(auth.requireAdmin);
   admin.use(async (req, _res, next) => { try { req.store = await getStore(req.merchantId); req.merchant = req.merchantId === DEFAULT_MERCHANT_ID ? null : await tenantRegistry.findById(req.merchantId); next(); } catch (error) { next(error); } });
-  admin.get('/account', async (req, res) => { const capabilities = req.merchant ? planCapabilities(req.merchant) : { plan: 'legacy', line: true, sheets: false, retention_days: null, label: '既有方案' }; res.json({ merchant_id: req.merchantId, merchant: req.merchant, shop_url: req.merchant ? `/shop/${req.merchant.slug}/` : '/shop/', can_accept_orders: req.merchant ? canAcceptOrders(req.merchant) : true, capabilities, retention: req.merchant ? retentionPolicy(req.merchant) : null }); });
+  admin.get('/account', async (req, res) => { const capabilities = req.merchant ? planCapabilities(req.merchant) : { plan: 'legacy', line: true, sheets: false, retention_days: null, label: '既有方案' }; res.json({ merchant_id: req.merchantId, merchant: req.merchant, shop_url: req.merchant ? `/shop/${req.merchant.slug}/` : '/shop/', can_accept_orders: req.merchant ? canAcceptOrders(req.merchant) : true, capabilities, retention: req.merchant ? retentionPolicy(req.merchant) : null, support_line_url: getSupportLineUrl() }); });
   admin.get('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.json({ legacy: true, enabled: Boolean(process.env.CHANNEL_ACCESS_TOKEN), configured: Boolean(process.env.CHANNEL_ACCESS_TOKEN && process.env.CHANNEL_SECRET), official_account_id: process.env.LINE_OFFICIAL_ACCOUNT_ID || '', webhook_url: `${String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')}/webhook` }); if (!hasPlanFeature(req.merchant, 'line')) return res.json({ locked: true, required_plan: 'pro', enabled: false }); const safe = publicIntegration(await lineIntegrations.get(req.merchantId), process.env.PUBLIC_BASE_URL || ''); const settings = await req.store.getSettings(); res.json({ ...safe, bound: Boolean(settings.merchant_line_user_id) }); } catch (error) { next(error); } });
   admin.put('/line-integration', async (req, res, next) => { try { if (!req.merchant) return res.status(409).json({ error: '既有商店請繼續使用 Zeabur 的 LINE 環境變數' }); if (!hasPlanFeature(req.merchant, 'line')) return res.status(403).json({ error: 'LINE 自動通知為專業版功能' }); const row = await lineIntegrations.save(req.merchantId, req.body || {}); tenantBots.delete(req.merchantId); if (row.enabled) { try { const connected = await getTenantBot(req.merchantId, true); await connected.bot.verifyConnection(); } catch (reason) { await lineIntegrations.save(req.merchantId, { enabled: false }); tenantBots.delete(req.merchantId); const error = new Error('LINE Channel Access Token 驗證失敗，已保持停用，請檢查後重試'); error.status = 400; throw error; } } res.json(publicIntegration(row, process.env.PUBLIC_BASE_URL || '')); } catch (error) { next(error); } });
   admin.get('/sheets-integration', (_req, res) => res.status(410).json({ error: 'Google 試算表同步已移除，請使用營業報表的 Excel 匯出' }));
