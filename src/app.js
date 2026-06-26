@@ -23,7 +23,7 @@ function getPlatformSalesUrl() {
   return value.startsWith('/') || /^https:\/\//i.test(value) ? value : '/admin/';
 }
 function getSupportLineUrl() {
-  const value = String(process.env.SUPPORT_LINE_URL || process.env.PLATFORM_SUPPORT_URL || '').trim();
+  const value = String(process.env.SUPPORT_LINE_URL || process.env.PLATFORM_SUPPORT_URL || 'https://line.me/R/ti/p/@761grlvm').trim();
   return /^https:\/\/(line\.me|lin\.ee)\//i.test(value) ? value : '';
 }
 
