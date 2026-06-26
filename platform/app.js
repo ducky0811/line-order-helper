@@ -1,4 +1,4 @@
-const state = { token: localStorage.getItem('platformToken'), data: null, query: '', filter: 'all' };
+const state = { token: localStorage.getItem('platformToken'), data: null, query: '', filter: 'all', selectedMonths: {} };
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 
@@ -125,6 +125,7 @@ function syncTrialDurations(root = document) {
 
 document.addEventListener('change', event => {
   if (event.target.matches('[data-role="plan"]')) syncTrialDurations(event.target.closest('.merchant'));
+  if (event.target.matches('[data-role="months"]')) state.selectedMonths[event.target.closest('.merchant')?.dataset.id] = event.target.value;
 });
 
 function planLabel(value) {
@@ -171,10 +172,10 @@ function renderMerchants() {
           <option value="trial" ${item.plan === 'trial' ? 'selected' : ''}>免費試用</option>
         </select></label>
         <label>期限<select data-role="months">
-          <option value="1">1 個月</option>
-          <option value="3">3 個月</option>
-          <option value="6">6 個月</option>
-          <option value="12">12 個月</option>
+          <option value="1" ${(state.selectedMonths[item.id] || '1') === '1' ? 'selected' : ''}>1 個月</option>
+          <option value="3" ${state.selectedMonths[item.id] === '3' ? 'selected' : ''}>3 個月</option>
+          <option value="6" ${state.selectedMonths[item.id] === '6' ? 'selected' : ''}>6 個月</option>
+          <option value="12" ${state.selectedMonths[item.id] === '12' ? 'selected' : ''}>12 個月</option>
         </select></label>
         <button data-action="activate">開通／延長</button>
         <div class="secondary-actions">
@@ -198,7 +199,9 @@ async function updateMerchant(button) {
   }
   let body;
   if (action === 'activate') {
-    body = { plan: card.querySelector('[data-role="plan"]').value, months: Number(card.querySelector('[data-role="months"]').value), extend: true };
+    const months = card.querySelector('[data-role="months"]').value;
+    state.selectedMonths[id] = months;
+    body = { plan: card.querySelector('[data-role="plan"]').value, months: Number(months), extend: true };
   } else {
     const currentlySuspended = button.dataset.suspended === 'true';
     if (!currentlySuspended && !confirm('確定暫停這間商店？客戶將無法送出新訂單。')) return;

@@ -21,7 +21,7 @@ function createLineConfirmUrl(order, rawId) {
 }
 
 function getPlatformSalesUrl() {
-  const value = String(process.env.PLATFORM_SALES_URL || '/admin/').trim();
+  const value = String(process.env.PLATFORM_SALES_URL || '/admin/#pricing').trim();
   return value.startsWith('/') || /^https:\/\//i.test(value) ? value : '/admin/';
 }
 
@@ -322,7 +322,12 @@ async function createApp(options = {}) {
     try { res.status(201).json({ url: await images.upload(req.body?.data_url, req.merchantId) }); } catch (error) { next(error); }
   });
   app.post('/api/shop/orders/:claimCode/messages', async (req, res, next) => {
-    try { res.json(await req.store.addOrderMessageByClaimCode(req.params.claimCode, { author: 'customer', text: req.body?.text, image_url: req.body?.image_url })); } catch (error) { next(error); }
+    try {
+      const order = await req.store.addOrderMessageByClaimCode(req.params.claimCode, { author: 'customer', text: req.body?.text, image_url: req.body?.image_url });
+      if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyCustomerMessage) await bot.notifyCustomerMessage(order).catch(error => console.error('❌ 店家 LINE 客戶留言通知失敗：', error));
+      else if (req.merchantId !== DEFAULT_MERCHANT_ID && hasPlanFeature(req.merchant, 'line')) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyCustomerMessage) await tenantLine.bot.notifyCustomerMessage(order).catch(error => console.error('❌ 店家 LINE 客戶留言通知失敗：', error)); }
+      res.json(order);
+    } catch (error) { next(error); }
   });
   app.post('/api/shop/orders/:claimCode/payment', async (req, res, next) => {
     try {
@@ -449,7 +454,12 @@ async function createApp(options = {}) {
     } catch (error) { next(error); }
   });
   admin.post('/orders/:id/messages', async (req, res, next) => {
-    try { res.json(await req.store.addOrderMessage(req.params.id, { author: 'merchant', text: req.body?.text, image_url: req.body?.image_url })); } catch (error) { next(error); }
+    try {
+      const order = await req.store.addOrderMessage(req.params.id, { author: 'merchant', text: req.body?.text, image_url: req.body?.image_url });
+      if (req.merchantId === DEFAULT_MERCHANT_ID && bot.notifyMerchantMessage) await bot.notifyMerchantMessage(order).catch(error => console.error('❌ LINE 客戶留言通知失敗：', error));
+      else if (req.merchantId !== DEFAULT_MERCHANT_ID && hasPlanFeature(req.merchant, 'line')) { const tenantLine = await getTenantBotSafe(req.merchantId); if (tenantLine?.bot.notifyMerchantMessage) await tenantLine.bot.notifyMerchantMessage(order).catch(error => console.error('❌ LINE 客戶留言通知失敗：', error)); }
+      res.json(order);
+    } catch (error) { next(error); }
   });
   app.use('/api/admin', admin);
 

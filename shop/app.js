@@ -3,6 +3,7 @@ const $ = selector => document.querySelector(selector);
 const money = value => `NT$ ${Number(value || 0).toLocaleString('zh-TW')}`;
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 const merchantSlug = location.pathname.split('/').filter(Boolean)[1] || '';
+const recentOrderKey = `recentOrder:${merchantSlug || 'default'}`;
 
 async function initLine(liffId) {
   if (!liffId || typeof liff === 'undefined') return;
@@ -45,6 +46,23 @@ function configureCheckout(config) {
   });
   renderFulfillmentChoices('#fulfillmentChoices');
   renderFulfillmentChoices('#quoteFulfillmentChoices');
+}
+
+function renderRecentOrderLink() {
+  const saved = JSON.parse(localStorage.getItem(recentOrderKey) || 'null');
+  let link = document.querySelector('#recentOrderLink');
+  if (!saved?.url) {
+    link?.remove();
+    return;
+  }
+  if (!link) {
+    link = document.createElement('a');
+    link.id = 'recentOrderLink';
+    link.className = 'recent-order-link';
+    document.querySelector('main').insertBefore(link, document.querySelector('#closedNotice'));
+  }
+  link.href = saved.url;
+  link.textContent = `查看最近訂單 #${saved.id || ''}／回覆店家訊息`;
 }
 
 async function loadConfig() {
@@ -159,6 +177,10 @@ function showSuccess(result) {
   $('#lineConfirm').hidden = !result.line_confirm_url;
   $('#lineConfirm').href = result.line_confirm_url || '#';
   $('#trackOrder').href = result.tracking_url || '#';
+  if (result.tracking_url) {
+    localStorage.setItem(recentOrderKey, JSON.stringify({ url: result.tracking_url, id: result.id.slice(0, 8), saved_at: Date.now() }));
+    renderRecentOrderLink();
+  }
   $('#successDialog').showModal();
 }
 
@@ -221,4 +243,4 @@ $('#copyClaim').addEventListener('click', async event => {
 
 $('#finishOrder').addEventListener('click', () => $('#successDialog').close());
 
-Promise.all([loadConfig(), loadProducts()]).then(() => { renderProducts(); renderCart(); });
+Promise.all([loadConfig(), loadProducts()]).then(() => { renderProducts(); renderCart(); renderRecentOrderLink(); });

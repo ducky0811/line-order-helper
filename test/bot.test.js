@@ -64,6 +64,15 @@ test('店家可綁定 LINE、收到新訂單並用按鈕更新狀態', async () 
       postback: { data: `action=paymentStatus&orderId=${order.id}&status=paid` }
     });
     assert.equal((await store.listOrders())[0].payment_status, 'paid');
+    const withCustomerMessage = await store.addOrderMessageByClaimCode(order.claim_code, { author: 'customer', text: '想補充照片' });
+    await bot.notifyCustomerMessage(withCustomerMessage);
+    assert.equal(calls.pushes.at(-1).to, 'Umerchant');
+    assert.match(JSON.stringify(calls.pushes.at(-1)), /客戶有新的留言/);
+    const withMerchantMessage = await store.addOrderMessage(order.id, { author: 'merchant', text: '收到，會幫您確認' });
+    await bot.notifyMerchantMessage(withMerchantMessage);
+    assert.equal(calls.pushes.at(-1).to, 'Ucustomer');
+    assert.match(JSON.stringify(calls.pushes.at(-1)), /店家回覆了您的訂單/);
+    assert.match(JSON.stringify(calls.pushes.at(-1)), /shop\.example\.com\/track/);
   } finally {
     if (previous == null) delete process.env.MERCHANT_BIND_CODE;
     else process.env.MERCHANT_BIND_CODE = previous;

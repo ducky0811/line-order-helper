@@ -200,6 +200,41 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
     });
   }
 
+  function trackingUrl(order) {
+    if (!publicBaseUrl || !order.claim_code) return '';
+    return `${publicBaseUrl}/track/?${merchantSlug ? `store=${encodeURIComponent(merchantSlug)}&` : ''}code=${encodeURIComponent(order.claim_code)}`;
+  }
+
+  async function notifyMerchantMessage(order) {
+    if (!order.line_user_id) return;
+    const messages = Array.isArray(order.order_messages) ? order.order_messages : [];
+    const latest = [...messages].reverse().find(message => message.author === 'merchant');
+    const link = trackingUrl(order);
+    const lines = [
+      `💬 店家回覆了您的訂單`,
+      `訂單編號：#${order.id.slice(0, 8)}`,
+      latest?.text ? `\n${latest.text}` : latest?.image_url ? '\n店家傳了一張照片給您。' : '',
+      link ? `\n查看訂單與回覆：\n${link}` : ''
+    ].filter(Boolean);
+    await client.pushMessage({ to: order.line_user_id, messages: [{ type: 'text', text: lines.join('\n') }] });
+  }
+
+  async function notifyCustomerMessage(order) {
+    const settings = await store.getSettings();
+    if (!settings.merchant_line_user_id) return;
+    const messages = Array.isArray(order.order_messages) ? order.order_messages : [];
+    const latest = [...messages].reverse().find(message => message.author === 'customer');
+    const customer = order.customer_name || '客戶';
+    const lines = [
+      `💬 客戶有新的留言`,
+      `訂單：#${order.id.slice(0, 8)}`,
+      `客戶：${customer}`,
+      latest?.text ? `\n${latest.text}` : latest?.image_url ? '\n客戶上傳了一張照片。' : '',
+      trackingUrl(order) ? `\n訂單進度頁：\n${trackingUrl(order)}` : ''
+    ].filter(Boolean);
+    await client.pushMessage({ to: settings.merchant_line_user_id, messages: [{ type: 'text', text: lines.join('\n') }] });
+  }
+
   async function notifyNewOrder(order) {
     const settings = await store.getSettings();
     if (!settings.merchant_line_user_id) return;
@@ -246,7 +281,7 @@ function createBot({ store, sheets, client: providedClient, config: providedConf
   }
 
   async function verifyConnection() { if (typeof client.getBotInfo !== 'function') return true; return client.getBotInfo(); }
-  return { config, middleware: line.middleware(config), handleEvent, notifyOrderStatus, notifyNewOrder, notifyPaymentStatus, notifyPaymentSubmitted, verifyConnection };
+  return { config, middleware: line.middleware(config), handleEvent, notifyOrderStatus, notifyNewOrder, notifyPaymentStatus, notifyPaymentSubmitted, notifyMerchantMessage, notifyCustomerMessage, verifyConnection };
 }
 
 module.exports = { createBot };
